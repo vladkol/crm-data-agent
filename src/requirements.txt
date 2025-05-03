@@ -1,0 +1,16 @@
+google-adk==0.3.*
+streamlit
+tabulate
+platformdirs
+Flask
+gunicorn
+scikit-learn
+google-genai
+pillow
+pandas
+google-cloud-aiplatform[adk,agent_engines]==1.91.*
+google-cloud-bigquery[pandas]
+google-cloud-bigquery-storage
+altair
+vl-convert-python
+python-dotenv
