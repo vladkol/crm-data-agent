@@ -37,7 +37,7 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 * Clone this repository:
 
 ```bash
-git clone https://github.com/vladkol/crm-data-engine && cd crm-data-engine
+git clone https://github.com/vladkol/crm-data-agent && cd crm-data-agent
 ```
 
 * Create a Python virtual Environment
