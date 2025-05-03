@@ -1,6 +1,6 @@
 # CRM Data Q&A Agent - Advanced RAG with NL2SQL over Salesforce Data
 
-This is a Data Analytics Agent that grounds its conversation in Salesforce data replicated to a Data Warehouse in [BigQuery](https://cloud.google.com/bigquery).
+This is a 📊 Data Analytics Agent that grounds its conversation in Salesforce data replicated to a Data Warehouse in [BigQuery](https://cloud.google.com/bigquery).
 
 The agent demonstrates an advanced [Retrieval-Augmented Generation](https://cloud.google.com/use-cases/retrieval-augmented-generation) workflow
 in a multi-agentic system with contextualized Natural-Language-to-SQL
@@ -13,7 +13,7 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 * It creates interactive [Vega Lite 4](https://vega.github.io/vega-lite-v4/) diagrams.
 * It analyzes the results, provides key insights and recommended actions.
 
-## Simple questions are complex
+## 🕵🏻‍♀️ Simple questions are complex
 
 <img src="tutorial/img/top_5_customers.jpg" alt="Top 5 customers by impact in the US this year" style="width:800px;"/>
 
@@ -24,11 +24,11 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
   * or more specific "What are our best lead sources by value?"
 * Lead conversion trends in the US.
 
-## Screenshot
+### Screenshot
 
 <img src="tutorial/img/lead_sources_screenshot.jpg" alt="What are our best lead source in every country?" style="width:800px;"/>
 
-## High-Level Design
+### High-Level Design
 
 <img src="tutorial/img/data_agent_design.jpg" alt="What are our best lead source in every country?" style="width:800px;"/>
 
