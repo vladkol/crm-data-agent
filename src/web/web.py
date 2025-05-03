@@ -51,6 +51,8 @@ st.set_page_config(layout="wide",
 st.title("📊 CRM Data Agent 🦄")
 st.subheader("This Agent can perform Data Analytics tasks "
              "over Salesforce data in BigQuery.")
+st.markdown("[github.com/vladkol/crm-data-agent]"
+            "(https://github.com/vladkol/crm-data-agent)")
 st.markdown("#### Examples of questions:")
 st.markdown("""
 * 🔝 Top 5 customers in every country.
