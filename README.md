@@ -109,6 +109,8 @@ Run `utils/get_agent_engine.py` script.
 
 Run `utils/deploy_demo_data.py` script.
 
+> **Note**: Demo data contains records dated 2020-2022. If you ask questions with "last year" or "6 months ago", they will likely return no data.
+
 #### Real Salesforce Data
 
 Create a [BigQuery Data Transfer for Salesforce](https://cloud.google.com/bigquery/docs/salesforce-transfer).
