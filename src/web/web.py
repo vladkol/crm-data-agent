@@ -212,25 +212,28 @@ def get_session() -> Session:
     if "adk_session" not in st.session_state:
         agent_engine_id = os.environ.get("AGENT_ENGINE_ID", None)
         if agent_engine_id:
-            try:
-                real_user_email = (
-                    subprocess.check_output(
-                        (
-                            "gcloud config list account "
-                            "--format \"value(core.account)\" "
-                            f"--project {os.environ['GOOGLE_CLOUD_PROJECT']} "
-                            "-q"
-                        ),
-                        shell=True,
+            real_user_email = st.context.headers.get(
+                "X-Goog-Authenticated-User-Email", "").split(":", 1)[-1]
+            if not real_user_email:
+                try:
+                    real_user_email = (
+                        subprocess.check_output(
+                            (
+                                "gcloud config list account "
+                                "--format \"value(core.account)\" "
+                                f"--project {os.environ['GOOGLE_CLOUD_PROJECT']} "
+                                "-q"
+                            ),
+                            shell=True,
+                        )
+                        .decode()
+                        .strip()
                     )
-                    .decode()
-                    .strip()
-                )
-                real_user_email = hashlib.md5(real_user_email.encode()).hexdigest()
-            except subprocess.CalledProcessError:
-                real_user_email = ""
+                except subprocess.CalledProcessError:
+                    real_user_email = ""
             if not real_user_email:
                 real_user_email = default_email
+            real_user_email = hashlib.md5(real_user_email.encode()).hexdigest()
             session = runner.session_service.create_session(
                 app_name=agent_engine_id,
                 user_id=real_user_email
