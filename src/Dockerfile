@@ -5,6 +5,6 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-EXPOSE 8501
+EXPOSE 8080
 
-CMD ["python3", "web/main.py", "agents/data_agent"]
+CMD uvicorn --app-dir web runner:api_app --port 8000 & python3 web/main.py agents/data_agent & wait

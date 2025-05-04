@@ -15,38 +15,39 @@
 
 import asyncio
 import hashlib
-import importlib.util
 from io import BytesIO
 import json
 import logging
 import os
 import subprocess
-import sys
 from time import time
-from typing import Optional
+
+from websockets import State
+from websockets.asyncio.client import connect, ClientConnection
 
 import pandas as pd
 import streamlit as st
 
 from google.genai.types import Content, Part
 
-from google.adk import Agent, Runner
 from google.adk.events import Event
 from google.adk.sessions import Session
-from google.adk.sessions.in_memory_session_service import InMemorySessionService
-from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
+from google.adk.sessions import VertexAiSessionService
 
 from PIL import Image
 
-_root_agent: Optional[Agent] = None # Root Agent
+from agent_artifact_service import GcsPartArtifactService
+
+MAX_RUN_RETRIES = 10
+DEFAULT_USER_ID = "user@ai"
 
 logging.getLogger().setLevel(logging.INFO)
 
 st.set_page_config(layout="wide",
                    page_icon=":material/bar_chart:",
                    page_title="📊 CRM Data Agent 🦄",
-                   initial_sidebar_state="collapsed")
+                   initial_sidebar_state="expanded")
 
 st.title("📊 CRM Data Agent 🦄")
 st.subheader("This Agent can perform Data Analytics tasks "
@@ -77,6 +78,8 @@ header {
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+
+######################### Event rendering #########################
 @st.fragment
 def _process_function_calls(function_calls):
   title = f"⚡ {', '.join([fc.name for fc in function_calls])}"
@@ -104,8 +107,8 @@ def _process_function_responses(function_responses):
 def _process_event(event: Event):
     if not event:
         return
-    session = get_session()
-    artifact_service = st.session_state["artifact_service"]
+    session = st.session_state.adk_session
+    artifact_service = st.session_state.artifact_service
 
     function_calls = []
     function_responses = []
@@ -179,176 +182,204 @@ def _process_event(event: Event):
 
 
 def _render_chat(events):
-    if events is None:
-        if "event_history" not in st.session_state:
-            return
-        events = st.session_state.event_history
     for event in events:
         _process_event(event)
 
 
+######################### Configuration management #########################
+
+def _get_user_id() -> str:
+    """Retrieves user id (email) from the environment,
+    and generate an MD5 hash of it for using with the session service
+
+    Returns:
+        str: user id for the session service
+    """
+    if "agent_user_id" in st.session_state:
+        return st.session_state["agent_user_id"]
+
+    user_id = st.context.headers.get(
+            "X-Goog-Authenticated-User-Email", "").split(":", 1)[-1]
+    if not user_id:
+        try:
+            user_id = (
+                subprocess.check_output(
+                    (
+                        "gcloud config list account "
+                        "--format \"value(core.account)\" "
+                        f"--project {os.environ['GOOGLE_CLOUD_PROJECT']} "
+                        "-q"
+                    ),
+                    shell=True,
+                )
+                .decode()
+                .strip()
+            )
+        except subprocess.CalledProcessError:
+            user_id = ""
+    if not user_id:
+            user_id = DEFAULT_USER_ID
+    user_id_md5 = hashlib.md5(user_id.lower().encode()).hexdigest()
+    st.session_state["agent_user_id"] = user_id_md5
+    return user_id_md5
+
+
+def _initialize_configuration():
+    if "adk_configured" in st.session_state:
+        return st.session_state.adk_configured
+    agent_engine_id = os.environ["AGENT_ENGINE_ID"]
+    vertex_ai_bucket = os.environ["AI_STORAGE_BUCKET"]
+
+    session_service = VertexAiSessionService(
+        project=os.environ["GOOGLE_CLOUD_PROJECT"],
+        location=os.environ["GOOGLE_CLOUD_LOCATION"],
+    )
+    artifact_service = GcsPartArtifactService(
+        bucket_name=vertex_ai_bucket
+    )
+    memory_service = InMemoryMemoryService()
+    st.session_state.artifact_service = artifact_service
+    st.session_state.session_service = session_service
+    st.session_state.app_name = agent_engine_id
+    st.session_state.memory_service = memory_service
+    st.session_state.adk_configured = True
+
+
+######################### Session management #########################
+
+def _create_session() -> Session:
+    if "adk_session" not in st.session_state:
+        session = st.session_state.session_service.create_session(
+            app_name=st.session_state.app_name,
+            user_id=_get_user_id()
+        )
+        st.session_state.adk_session = session
+        st.session_state.all_adk_sessions = (st.session_state.all_adk_sessions
+                                             or [])
+        st.session_state.all_adk_sessions.insert(0, session)
+    return st.session_state.adk_session
+
+
+def _get_all_sessions() -> list[Session]:
+    if "all_adk_sessions" in st.session_state:
+        return st.session_state.all_adk_sessions
+    sessions_response = st.session_state.session_service.list_sessions(
+            app_name=st.session_state.app_name,
+            user_id=_get_user_id())
+    sessions = sessions_response.sessions
+    st.session_state.all_adk_sessions = sessions or []
+    return sessions
+
+
+######################### Agent Request Handler #########################
+
 async def ask_agent(question: str):
     start = time()
-    session = get_session()
+    session = st.session_state.adk_session
     content = Content(parts=[
         Part.from_text(text=question)
     ],role="user")
 
     user_event = Event(author="user", content=content)
-    st.session_state["event_history"].append(user_event)
     _render_chat([user_event])
 
-    events = get_agent_runner().run_async(user_id=session.user_id,
-                                          session_id=session.id,
-                                          new_message=content)
-    async for event in events:
-        # st.session_state.event_history.append(event)
-        _render_chat([event])
+    # Connect to FastAPI server that runs Agent Runner
+    connection = await connect(
+        f"ws://127.0.0.1:8000/ws/{session.user_id}/{session.id}",
+        ping_interval=5, # Ping interval of 5 seconds
+        ping_timeout=60*15 # Ping timeout of 15 minutes
+    )
+
+    model_events_cnt = 0 # Count valid model events in this run
+    for _ in range(MAX_RUN_RETRIES):
+        if model_events_cnt > 0:
+            break
+        turn_complete = False
+        # Send request to the agent
+        await connection.send(content.model_dump_json(), True)
+        while connection.state == State.OPEN and not turn_complete:
+            message = await connection.recv(True)
+            if message == "TURN_COMPLETE":
+                turn_complete = True
+                break
+            event = Event.model_validate_json(message)
+            # If no valid model events in this run, but got an func call error,
+            # retry the run
+            if (event.error_code
+                    and event.error_code == "MALFORMED_FUNCTION_CALL"
+                    and model_events_cnt == 0):
+                print("Retrying the run")
+                break
+            if event.content and event.content.role == "model":
+                model_events_cnt += 1
+            _render_chat([event])
+    # Closing the connection until the next request
+    if connection.state == State.OPEN:
+        await connection.close()
+    # Re-retrieve the session
+    st.session_state.adk_session = st.session_state.session_service.get_session(
+        app_name=session.app_name,
+        user_id=session.user_id,
+        session_id=session.id
+    )
     end = time()
     st.text(f"Flow duration: {end - start:.2f}s")
 
 
-def get_session() -> Session:
-    default_email = "user@ai"
-    runner = get_agent_runner()
-    if "adk_session" not in st.session_state:
-        agent_engine_id = os.environ.get("AGENT_ENGINE_ID", None)
-        if agent_engine_id:
-            real_user_email = st.context.headers.get(
-                "X-Goog-Authenticated-User-Email", "").split(":", 1)[-1]
-            if not real_user_email:
-                try:
-                    real_user_email = (
-                        subprocess.check_output(
-                            (
-                                "gcloud config list account "
-                                "--format \"value(core.account)\" "
-                                f"--project {os.environ['GOOGLE_CLOUD_PROJECT']} "
-                                "-q"
-                            ),
-                            shell=True,
-                        )
-                        .decode()
-                        .strip()
-                    )
-                except subprocess.CalledProcessError:
-                    real_user_email = ""
-            if not real_user_email:
-                real_user_email = default_email
-            real_user_email = hashlib.md5(real_user_email.encode()).hexdigest()
-            session = runner.session_service.create_session(
-                app_name=agent_engine_id,
-                user_id=real_user_email
-            )
-        else:
-            session = runner.session_service.create_session(
-                                      app_name=runner.app_name,
-                                      user_id=default_email)
-        st.session_state.event_history = []
-        st.session_state.adk_session = session
-    return st.session_state.adk_session
-
-
-def get_root_agent() -> Agent:
-    global _root_agent
-    if _root_agent:
-        return _root_agent
-    root_files = [
-        "__init__.py",
-        "__main__.py",
-        "agent.py",
-        "main.py"
-    ]
-    module_name = "adk_root_agent_module"
-    agent_dir = os.environ.get("AGENT_DIRECTORY", os.path.abspath("."))
-    for file_name in root_files:
-        spec = importlib.util.spec_from_file_location(module_name,
-                            f"{agent_dir}/{file_name}")
-        if spec:
-            break
-    module = importlib.util.module_from_spec(spec) # type: ignore
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module) # type: ignore
-    _root_agent = getattr(module, "root_agent")
-    return _root_agent # type: ignore
-
-
-def get_agent_runner()-> Runner:
-    if "adk_runner" not in st.session_state:
-        agent_engine_id = os.environ.get("AGENT_ENGINE_ID", None)
-        vertex_ai_bucket = os.environ.get("AI_STORAGE_BUCKET", None)
-        if agent_engine_id and vertex_ai_bucket:
-            from google.adk.sessions import VertexAiSessionService
-            from agent_artifact_service import GcsPartArtifactService
-
-            session_service = VertexAiSessionService(
-                project=os.environ["GOOGLE_CLOUD_PROJECT"],
-                location=os.environ["GOOGLE_CLOUD_LOCATION"],
-            )
-            artifact_service = GcsPartArtifactService(
-                bucket_name=vertex_ai_bucket
-            )
-        else:
-            agent_engine_id = "crm_data_agent"
-            session_service = InMemorySessionService()
-            artifact_service = InMemoryArtifactService()
-        memory_service = InMemoryMemoryService()
-        st.session_state["artifact_service"] = artifact_service
-        runner = Runner(app_name=agent_engine_id,
-                        agent=get_root_agent(),
-                        artifact_service=artifact_service,
-                        session_service=session_service,
-                        memory_service=memory_service)
-        st.session_state["adk_runner"] = runner
-    return st.session_state["adk_runner"]
-
-
-def get_all_sessions() -> list[Session]:
-    if "adk_sessions" in st.session_state:
-        return st.session_state["adk_sessions"]
-    runner = get_agent_runner()
-    current_session = get_session()
-    sessions_response = runner.session_service.list_sessions(
-            app_name=current_session.app_name,
-            user_id=current_session.user_id)
-    sessions = sessions_response.sessions
-    ids = [s.id for s in sessions]
-    if current_session.id not in ids:
-        sessions.insert(0, current_session)
-        st.session_state.adk_sessions = sessions
-    return sessions_response.sessions
-
+######################### Streamlit main flow #########################
 
 async def app():
     top = st.container()
 
-    with st.spinner("Initializing...", show_time=False):
-        current_session = get_session()
-        sessions_list = get_all_sessions()
+    if "adk_configured" not in st.session_state:
+        with st.spinner("Initializing...", show_time=False):
+            _initialize_configuration()
+            sessions_list = _get_all_sessions()
+    else:
+        sessions_list = _get_all_sessions()
+    if "adk_session" in st.session_state:
+        current_session = st.session_state.adk_session
+    elif sessions_list:
+        current_session = st.session_state.session_service.get_session(
+            app_name=st.session_state.app_name,
+            user_id=_get_user_id(),
+            session_id=sessions_list[0].id)
+    if not current_session:
+        current_session = _create_session()
+    st.session_state.adk_session = current_session
+
     with st.sidebar:
+        st.markdown("### Sessions")
+        if st.button("New Session"):
+            with st.spinner("Creating a new session...", show_time=False):
+                st.session_state.pop("adk_session", None)
+                current_session = _create_session()
+                st.session_state.adk_session = current_session
+            st.rerun()
+
+        sessions_list = st.session_state.all_adk_sessions
         session_ids = [s.id for s in sessions_list]
         sessions = {s.id : s for s in sessions_list}
         selected_option = st.selectbox("Select a session:",
                                        session_ids,
                                        index=0)
-        if selected_option and selected_option != current_session.id:
+        if selected_option and selected_option != current_session.id: # type: ignore
             selected_session = sessions[selected_option]
-            selected_session = get_agent_runner(
-            ).session_service.get_session(
-                app_name=selected_session.app_name,
-                user_id=selected_session.user_id,
-                session_id=selected_session.id
-            )
+            with st.spinner("Loading...", show_time=False):
+                selected_session = st.session_state.session_service.get_session(
+                    app_name=selected_session.app_name,
+                    user_id=selected_session.user_id,
+                    session_id=selected_session.id
+                )
             st.session_state.adk_session = selected_session
-            with top:
-                _render_chat(selected_session.events) # type: ignore
+    with top:
+        _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
         question = st.chat_input("Ask a question about your data!")
         if "question" not in current_session.state:
             current_session.state["question"] = question
         with top:
             with st.spinner("Thinking...", show_time=True):
-                _render_chat(None)
                 if question:
                     await ask_agent(question)
 
@@ -357,4 +388,3 @@ if __name__ == "__main__":
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(app())
-

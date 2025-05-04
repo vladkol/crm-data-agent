@@ -27,6 +27,7 @@ flag_options = {
       "server.headless": True,
       "server.enableCORS": False,
       "server.enableXsrfProtection": False,
+      "server.fileWatcherType": None,
       "server.port": int(os.getenv("PORT", 8080)),
       "server.enableWebsocketCompression": True,
       "browser.gatherUsageStats": False,
@@ -45,7 +46,7 @@ if __name__ == "__main__":
     print(f"Agent directory: {agent_dir}")
     os.environ["AGENT_DIRECTORY"] = agent_dir
     prepare_environment()
-    app_script_path = os.path.join(os.path.dirname(__file__), "web.py")
+    app_script_path = os.path.join(os.path.dirname(__file__), "web_streaming.py")
     bootstrap.load_config_options(flag_options)
     bootstrap.run(
         app_script_path,

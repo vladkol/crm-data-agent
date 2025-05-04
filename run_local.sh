@@ -15,5 +15,5 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 pushd "${SCRIPT_DIR}/src" &> /dev/null || exit
-python3 web/main.py "agents/data_agent"
+uvicorn --app-dir web runner:api_app --port 8000 & python3 web/main.py agents/data_agent & wait
 popd &> /dev/null || exit
