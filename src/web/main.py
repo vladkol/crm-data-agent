@@ -46,7 +46,7 @@ if __name__ == "__main__":
     print(f"Agent directory: {agent_dir}")
     os.environ["AGENT_DIRECTORY"] = agent_dir
     prepare_environment()
-    app_script_path = os.path.join(os.path.dirname(__file__), "web_streaming.py")
+    app_script_path = os.path.join(os.path.dirname(__file__), "web.py")
     bootstrap.load_config_options(flag_options)
     bootstrap.run(
         app_script_path,
