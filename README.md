@@ -147,6 +147,9 @@ This will allow you to use your customized metadata in addition to analyzing you
 
 * Run `.\deploy_to_cloud_run.sh`
 
+> This deployment uses default Compute Service Account for Cloud Run.
+To make changes in how the deployment is done, adjust `gcloud` command in [deploy_to_cloud_run.py](utils/deploy_to_cloud_run.py)
+
 **Cloud Run Authentication Note**:
 
 By default, this script deploys a Cloud Run service that requires authentication.
