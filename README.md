@@ -84,6 +84,7 @@ or, with `uv`:
 * BigQuery Job User (`roles/bigquery.jobUser`) in BQ_PROJECT_ID project (or GOOGLE_CLOUD_PROJECT, if BQ_PROJECT_ID is empty).
 * BigQuery Data Viewer (`roles/bigquery.dataViewer`) for SFDC_BQ_DATASET dataset.
 * Storage Object User (`roles/storage.objectUser`) for AI_STORAGE_BUCKET bucket.
+* Vertex AI User (`roles/aiplatform.user`) in GOOGLE_CLOUD_PROJECT project.
 
 ### Enable APIs in your project
 
