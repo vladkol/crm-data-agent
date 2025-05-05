@@ -29,10 +29,9 @@ from google.adk.sessions import VertexAiSessionService
 
 from fastapi import FastAPI, WebSocket
 
-from agent_artifact_service import GcsPartArtifactService
-
 sys.path.append(str(Path(__file__).parent.parent))
-from agents.config_env import prepare_environment
+from shared.agent_artifact_service import GcsPartArtifactService
+from shared.config_env import prepare_environment
 
 _root_agent = None # Root Agent
 _runner = None # Runner

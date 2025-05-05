@@ -20,11 +20,14 @@ import os
 import subprocess
 import sys
 
-from dotenv import load_dotenv
-
 from vertexai import init
 from vertexai.agent_engines import list as list_engines
 from google.adk.sessions import VertexAiSessionService
+
+sys.path.append(str(Path(__file__).parent.parent))
+from src.shared.config_env import prepare_environment
+
+prepare_environment()
 
 logging.basicConfig(level=logging.INFO)
 
@@ -50,12 +53,10 @@ def _clean_agent(agent_name: str, user_id: str):
 
 
 if __name__ == "__main__":
-    dotenv_path = Path(__file__).parent.parent / "src" / ".env"
-    load_dotenv(dotenv_path=dotenv_path, override=True)
     if "AGENT_ENGINE_ID" not in os.environ or not os.environ["AGENT_ENGINE_ID"]:
         logging.error("Configuration variable AGENT_ENGINE_ID is not set.")
         sys.exit(1)
-    agent_name = "crm_data_agent"
+    agent_name = os.environ["AGENT_NAME"]
     if len(sys.argv) < 2:
         try:
             user_name = (

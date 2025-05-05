@@ -18,12 +18,13 @@ import logging
 import os
 import sys
 
-from dotenv import load_dotenv
+sys.path.append(str(Path(__file__).parent.parent))
+from src.shared.config_env import prepare_environment
 
 from vertexai import init
 from vertexai.agent_engines import create, list as list_engines
 
-logging.basicConfig(level=logging.CRITICAL)
+logging.basicConfig(level=logging.ERROR)
 
 def _deploy_agent(agent_name: str)->str:
     init(project=os.environ["GOOGLE_CLOUD_PROJECT"],
@@ -48,18 +49,19 @@ def get_agent_engine(agent_name: str) -> str:
         str: Agent Engine Id
     """
     dotenv_path = Path(__file__).parent.parent / "src" / ".env"
-    load_dotenv(dotenv_path=dotenv_path, override=True)
     if "AGENT_ENGINE_ID" not in os.environ or not os.environ["AGENT_ENGINE_ID"]:
         resource = _deploy_agent(agent_name)
         agent_id = resource.split("/")[-1]
         os.environ["AGENT_ENGINE_ID"] = agent_id
+        print(f"Adding variable AGENT_ENGINE_ID=\"{agent_id}\" to .env file.")
         with dotenv_path.open("a") as f:
             f.write(f"AGENT_ENGINE_ID=\"{agent_id}\"")
     return os.environ["AGENT_ENGINE_ID"]
 
 if __name__ == "__main__":
+    prepare_environment()
     if len(sys.argv) < 2:
-        agent_name = "crm_data_agent"
+        agent_name = os.environ["AGENT_NAME"]
     else:
         agent_name = sys.argv[1]
-    print(get_agent_engine(agent_name))
+    print("Agent Engine: " + get_agent_engine(agent_name))

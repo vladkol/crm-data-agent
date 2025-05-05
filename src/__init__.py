@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,28 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""src module init"""
 
 from pathlib import Path
-import os
-import subprocess
 import sys
 
+sys.path.append(".")
+sys.path.append(str(Path(__file__).parent))
 sys.path.append(str(Path(__file__).parent.parent))
-from src.shared.config_env import prepare_environment
-
-prepare_environment()
-
-cmd_line = f"""
-gcloud run deploy "{sys.argv[1]}"
-        --project="{os.environ['GOOGLE_CLOUD_PROJECT']}"
-        --region="{os.environ['GOOGLE_CLOUD_LOCATION']}"
-        --port=8080
-        --cpu=8
-        --memory=32Gi
-        --no-allow-unauthenticated
-        --no-cpu-throttling
-        --source "./src"
-        --timeout 1h
-""".replace("\n", " ").strip()
-
-subprocess.run(cmd_line, shell=True)

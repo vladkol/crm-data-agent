@@ -28,8 +28,8 @@ from google.adk.models import LlmResponse, LlmRequest
 from google.adk.planners import PlanReActPlanner
 from google.adk.tools.agent_tool import AgentTool
 
-sys.path.append(str(Path(__file__).parent.parent))
-from agents.config_env import prepare_environment
+sys.path.append(str(Path(__file__).parent.parent.parent))
+from shared.config_env import prepare_environment
 
 from prompts.root_agent import system_instruction as root_agent_instruction
 from tools.bi_engineer import bi_engineer_tool

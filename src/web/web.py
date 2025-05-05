@@ -37,7 +37,8 @@ from google.adk.sessions import VertexAiSessionService
 
 from PIL import Image
 
-from agent_artifact_service import GcsPartArtifactService
+from shared.agent_artifact_service import GcsPartArtifactService
+from agent_runtime_client import AgentEngineRuntime, FastAPIEngineRuntime
 
 MAX_RUN_RETRIES = 10
 DEFAULT_USER_ID = "user@ai"
@@ -283,26 +284,19 @@ async def ask_agent(question: str):
     user_event = Event(author="user", content=content)
     _render_chat([user_event])
 
-    # Connect to FastAPI server that runs Agent Runner
-    connection = await connect(
-        f"ws://127.0.0.1:8000/ws/{session.user_id}/{session.id}",
-        ping_interval=5, # Ping interval of 5 seconds
-        ping_timeout=60*15 # Ping timeout of 15 minutes
-    )
+    runtime_name = os.environ["RUNTIME_ENVIRONMENT"].lower()
+    if runtime_name == "local":
+        runtime = FastAPIEngineRuntime(session)
+    elif runtime_name == "agent_engine":
+        runtime = AgentEngineRuntime(session, os.environ["AGENT_ENGINE_ID"])
+    else:
+        ValueError(f"`{runtime_name}` is not a valid runtime name.")
 
     model_events_cnt = 0 # Count valid model events in this run
     for _ in range(MAX_RUN_RETRIES):
         if model_events_cnt > 0:
             break
-        turn_complete = False
-        # Send request to the agent
-        await connection.send(content.model_dump_json(), True)
-        while connection.state == State.OPEN and not turn_complete:
-            message = await connection.recv(True)
-            if message == "TURN_COMPLETE":
-                turn_complete = True
-                break
-            event = Event.model_validate_json(message)
+        async for event in runtime.stream_query(question):
             # If no valid model events in this run, but got an func call error,
             # retry the run
             if (event.error_code
@@ -313,9 +307,7 @@ async def ask_agent(question: str):
             if event.content and event.content.role == "model":
                 model_events_cnt += 1
             _render_chat([event])
-    # Closing the connection until the next request
-    if connection.state == State.OPEN:
-        await connection.close()
+
     # Re-retrieve the session
     st.session_state.adk_session = st.session_state.session_service.get_session(
         app_name=session.app_name,

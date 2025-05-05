@@ -13,20 +13,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from pathlib import Path
+import os
 import subprocess
 import sys
 
-from dotenv import load_dotenv
+sys.path.append(str(Path(__file__).parent.parent))
+from src.shared.config_env import prepare_environment
 
-sys.path.append(".")
-from src.agents.config_env import prepare_environment
+prepare_environment()
 
 git_cmd_line = "git clone --depth 1  --no-tags https://github.com/vladkol/sfdc-kittycorn ./data && rm -rf ./data/.git"
 subprocess.run(git_cmd_line, shell=True)
 
-prepare_environment()
 _python_cmd_line = (f"\"{sys.executable}\" ./data/deploy_to_my_project.py "
                     f"--project {os.environ['SFDC_DATA_PROJECT_ID']} "
                     f"--dataset {os.environ['SFDC_BQ_DATASET']} "

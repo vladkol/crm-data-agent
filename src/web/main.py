@@ -21,7 +21,7 @@ import sys
 import streamlit.web.bootstrap as bootstrap
 
 sys.path.append(str(Path(__file__).parent.parent))
-from agents.config_env import prepare_environment
+from shared.config_env import prepare_environment
 
 flag_options = {
       "server.headless": True,
@@ -42,9 +42,16 @@ if __name__ == "__main__":
         agent_dir = sys.argv[1]
     else:
         agent_dir = "."
+    if len(sys.argv) >= 3:
+        target_env = sys.argv[2]
+    else:
+        target_env = "local"
+    print(f"Target runtime environment: {target_env}")
+
     agent_dir = os.path.abspath(agent_dir)
     print(f"Agent directory: {agent_dir}")
     os.environ["AGENT_DIRECTORY"] = agent_dir
+    os.environ["RUNTIME_ENVIRONMENT"] = target_env
     prepare_environment()
     app_script_path = os.path.join(os.path.dirname(__file__), "web.py")
     bootstrap.load_config_options(flag_options)

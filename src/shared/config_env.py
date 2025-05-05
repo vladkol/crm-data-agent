@@ -14,7 +14,7 @@
 """Configuration Environment Variables Loader"""
 
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, dotenv_values
 from pathlib import Path
 import logging
 import sys
@@ -34,20 +34,44 @@ _env_requirements = {
 }
 _prepared = False
 
+def _get_dotenv_file() -> str:
+    dotenv_path = Path(__file__).parent.parent / ".env"
+    if not dotenv_path.exists():
+        logging.warning(f"{dotenv_path} not found.")
+        return ""
+    return str(dotenv_path)
+
+def get_env_values() -> dict:
+    env_file = _get_dotenv_file()
+    if not env_file:
+        logging.warning(".env file not found. Trying to re-construct from values.")
+        env_dict = {}
+        for name in _env_requirements:
+            env_dict[name] = os.environ.get(name, None)
+        return env_dict
+    values = dotenv_values(_get_dotenv_file()).copy()
+    for v in values:
+        if v in os.environ:
+            values[v] = os.environ[v]
+    return values
+
+
 def prepare_environment():
     global _prepared
     if _prepared:
         return
-    _prepared = True
-    dontenv_path = Path(__file__).parent.parent / ".env"
-    if not dontenv_path.exists():
-        logging.critical(f"{dontenv_path} not found.")
-        sys.exit(1)
-    load_dotenv(dotenv_path=dontenv_path, override=True)
+    env_file = _get_dotenv_file()
+    if not env_file:
+        logging.warning(".env file not found. Trying to re-construct from values.")
+        env_dict = {}
+        for name in _env_requirements:
+            env_dict[name] = os.environ.get(name, None)
+    else:
+        load_dotenv(dotenv_path=_get_dotenv_file(), override=True)
     for name, val in _env_requirements.items():
         if name in os.environ and len(os.environ[name].strip()) > 0:
             continue
-        if val is None:
+        if val is None or val.strip() == "":
             logging.error(f"{name} variable must be set.")
             sys.exit(1)
         elif val.startswith("$"):
@@ -55,3 +79,4 @@ def prepare_environment():
             os.environ[name] = os.environ[ref_name]
         else:
             os.environ[name] = val
+    _prepared = True

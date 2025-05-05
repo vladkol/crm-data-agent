@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +11,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""agents init module"""
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-pushd "${SCRIPT_DIR}/src" &> /dev/null || exit
-if [[ "$1" == "agent_engine" ]]; then
-    python3 web/main.py "agents/data_agent" "agent_engine"
-else
-    uvicorn --app-dir web fast_api_runner:api_app --port 8000 & python3 web/main.py "agents/data_agent" "local" & wait
-fi
-popd &> /dev/null || exit
