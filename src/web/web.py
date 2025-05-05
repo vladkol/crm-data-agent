@@ -329,6 +329,7 @@ async def app():
             sessions_list = _get_all_sessions()
     else:
         sessions_list = _get_all_sessions()
+    current_session = None
     if "adk_session" in st.session_state:
         current_session = st.session_state.adk_session
     elif sessions_list:
