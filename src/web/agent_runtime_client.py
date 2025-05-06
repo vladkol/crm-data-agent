@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
-import base64
-from typing import AsyncGenerator, Optional
+import json
+from typing import AsyncGenerator, Union, Optional
 from typing_extensions import override
 
-from google.api.httpbody_pb2 import HttpBody
+import requests
+
 from google.adk.events import Event
 from google.adk.sessions import Session
 from google.genai.types import Content, Part
 
 import vertexai
 
+from pydantic import ValidationError
+
 import vertexai.agent_engines
-from websockets import State
-from websockets.asyncio.client import connect
 
 
 MAX_RUN_RETRIES = 10
@@ -54,11 +55,6 @@ class AgentEngineRuntime(AgentRuntime):
                     yield Event.model_validate(event)
                 elif isinstance(event, str):
                     yield Event.model_validate_json(event)
-                elif isinstance(event, HttpBody):
-                    if not event.data:
-                        continue
-                    text = event.data.decode("utf-8")
-                    raise RuntimeError(text)
                 else:
                     raise Exception(f"Unknown event type: {type(event)}")
         finally:
@@ -68,6 +64,59 @@ class AgentEngineRuntime(AgentRuntime):
     def is_streaming(self) -> bool:
         return self.streaming
 
+async def sse_client(url, request, headers):
+    """
+    A very minimal SSE client using only the requests library.
+    Yields the data content from SSE messages.
+    Handles multi-line 'data:' fields for a single event.
+    """
+    if not headers:
+        headers = {}
+    headers["Accept"] = "text/event-stream"
+    try:
+        # stream=True is essential for SSE
+        # timeout=None can be used for very long-lived connections,
+        # but be aware of potential indefinite blocking if server misbehaves.
+        # A specific timeout (e.g., (3.05, 60)) for connect and read can be safer.
+        with requests.post(url, json=request, stream=True, headers=headers, timeout=(60, 60*60*24*7)) as response:
+            response.raise_for_status()  # Raise an exception for HTTP error codes (4xx or 5xx)
+            print(f"Connected to SSE stream at {url}")
+
+            current_event_data_lines = []
+            for line_bytes in response.iter_lines(): # iter_lines gives bytes
+                if not line_bytes: # An empty line signifies the end of an event
+                    if current_event_data_lines:
+                        # Join accumulated data lines for the event
+                        full_data_string = "\n".join(current_event_data_lines)
+                        yield full_data_string
+                        current_event_data_lines = [] # Reset for the next event
+                    continue # Skip further processing for this empty line
+
+                # Decode bytes to string (SSE is typically UTF-8)
+                line = line_bytes.decode('utf-8')
+
+                if line.startswith(':'): # Comment line, ignore
+                    continue
+
+                # We are only interested in 'data:' lines for this minimal client
+                if line.startswith('data:'):
+                    # Strip "data:" prefix and any leading/trailing whitespace from the value part
+                    data_value = line[len('data:'):].lstrip()
+                    current_event_data_lines.append(data_value)
+
+                # Other SSE fields like 'event:', 'id:', 'retry:' are ignored here.
+
+            # If the stream ends and there's pending data (no final empty line)
+            if current_event_data_lines:
+                full_data_string = "\n".join(current_event_data_lines)
+                yield full_data_string
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error connecting or streaming SSE: {e}")
+    except KeyboardInterrupt:
+        print("SSE stream manually interrupted.")
+    finally:
+        print("SSE client finished.")
 
 class FastAPIEngineRuntime(AgentRuntime):
     def __init__(self,
@@ -75,41 +124,55 @@ class FastAPIEngineRuntime(AgentRuntime):
                  server_url: Optional[str] = None ):
         super().__init__(session)
         if not server_url:
-            server_url = ("ws://127.0.0.1:8000/ws/"
-                          f"{self.session.user_id}/{self.session.id}")
+            server_url = "http://127.0.0.1:8000"
         self.server_url = server_url
         self.streaming = False
         self.connection = None
 
 
     @override
-    async def stream_query(self, message: str) -> AsyncGenerator[Event, None]:
+    async def stream_query(self, message: Union[str, Content]) -> AsyncGenerator[Event, None]:
         self.streaming = True
         try:
-            content = Content(parts=[
-                                Part.from_text(text=message)
-                            ],
-                            role="user"
-            )
-            if not self.connection or self.connection.state != State.OPEN:
-                self.connection = await connect(
-                    self.server_url,
-                    open_timeout=60, # Open timeout of 1 minute
-                    ping_interval=5, # Ping interval of 5 seconds
-                    ping_timeout=60*15 # Ping timeout of 15 minutes
+            if not message:
+                content = None
+            if message and isinstance(message, str):
+                content = Content(parts=[
+                                    Part.from_text(text=message)
+                                ],
+                                role="user"
                 )
-            turn_complete = False
-            await self.connection.send(content.model_dump_json(), True)
-            while self.connection.state == State.OPEN and not turn_complete:
-                message = await self.connection.recv(True)
-                if message == "TURN_COMPLETE":
-                    turn_complete = True
-                    break
-                event = Event.model_validate_json(message)
-                yield event
-            # Closing the connection until the next request
-            if self.connection.state == State.OPEN:
-                await self.connection.close()
+            else:
+                content = message
+            if content:
+                content_dict = content.model_dump()
+            else:
+                content_dict = None
+            request = {
+                "app_name": "agents.data_agent",
+                "user_id": self.session.user_id,
+                "session_id": self.session.id,
+                "new_message": content_dict,
+                "streaming": False
+            }
+
+            async for event_str in sse_client(f"{self.server_url}/run_sse",
+                                          request=request,
+                                          headers=None):
+                try:
+                    yield Event.model_validate_json(event_str)
+                except ValidationError as e:
+                    try:
+                        # trying to parse as if it was a json with "error" field.
+                        err_json = json.loads(event_str)
+                        if "error" in err_json:
+                            print(f"#### RUNTIME ERROR: {err_json['error']}")
+                            continue
+                    except json.JSONDecodeError:
+                        print(f"VALIDATION ERROR: {e}")
+                        print("### DATA ###:\n" + event_str)
+                        print("\n\n######################################\n\n")
+                        pass
         finally:
             self.streaming = False
 

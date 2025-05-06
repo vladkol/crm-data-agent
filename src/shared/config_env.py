@@ -62,12 +62,10 @@ def prepare_environment():
         return
     env_file = _get_dotenv_file()
     if not env_file:
-        logging.warning(".env file not found. Trying to re-construct from values.")
-        env_dict = {}
-        for name in _env_requirements:
-            env_dict[name] = os.environ.get(name, None)
+        logging.warning(".env file not found.")
     else:
         load_dotenv(dotenv_path=_get_dotenv_file(), override=True)
+
     for name, val in _env_requirements.items():
         if name in os.environ and len(os.environ[name].strip()) > 0:
             continue
@@ -79,4 +77,5 @@ def prepare_environment():
             os.environ[name] = os.environ[ref_name]
         else:
             os.environ[name] = val
+
     _prepared = True

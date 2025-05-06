@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     agent_dir = os.path.abspath(agent_dir)
     print(f"Agent directory: {agent_dir}")
-    os.environ["AGENT_DIRECTORY"] = agent_dir
+    os.environ["AGENT_DIR"] = agent_dir
     os.environ["RUNTIME_ENVIRONMENT"] = target_env
     prepare_environment()
     app_script_path = os.path.join(os.path.dirname(__file__), "web.py")

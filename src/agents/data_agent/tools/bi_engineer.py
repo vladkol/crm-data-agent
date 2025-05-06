@@ -67,8 +67,7 @@ def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
     """
     if "params" not in vega_chart:
         return vega_chart
-    if ("params" not in vega_chart
-        or "transform" not in vega_chart):
+    if "params" not in vega_chart or "'transform':" not in str(vega_chart):
         print("Cannot enhance parameters because one or "
               "more of these are missing: "
               "[params, transform]")
@@ -205,8 +204,9 @@ def bi_engineer_tool(original_business_question: str,
                 vega_chart.data = df
                 with io.BytesIO() as file:
                     vega_chart.save(file, "png")
+                error_reason = ""
                 break
-            except (jsonschema.ValidationError, json.JSONDecodeError, ValueError, ReferenceError) as ex:
+            except Exception as ex:
                 message = f"ERROR {type(ex).__name__}: " + ex.message if ex is jsonschema.ValidationError else str(ex)
                 error_reason = message
                 print(message)
@@ -217,8 +217,6 @@ def bi_engineer_tool(original_business_question: str,
                 chart_json = vega_fix_chat.send_message(
                     message
                 ).parsed.vega_lite_4_json # type: ignore
-
-        error_reason = ""
 
         if not error_reason:
             with io.BytesIO() as file:

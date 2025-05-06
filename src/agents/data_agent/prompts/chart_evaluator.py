@@ -29,8 +29,10 @@ If not good, provide a reason with a longer explanation of what needs to be work
 The chart must be comfortable to read on a 2K screen of 16 inch size with ability to zoom in and out.
 Do not make comments about choice of dimensions, metrics, grouping or data cardinality.
 You can only criticize readability, composition, color choices, font size, etc.
-Chart may require interaction (selection parameters). Default selection may make rendered chart lack data. Be tolerant to that.
-If a chart is too dense on a dimension that is a selection parameters, then it's ok.
+
+**Exceptions:**
+* The chart may require interaction (selection parameters). Default selection may make rendered chart lack data. Be tolerant to that.
+* The chart may be hard to read due to the density of elements. If the density problem can be solved by selecting a parameter value, then then assume it is ok, and let it slide.
 
 **QUESTION:**
 ```

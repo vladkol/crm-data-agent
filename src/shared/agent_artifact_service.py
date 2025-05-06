@@ -16,6 +16,8 @@
 
 from typing import Optional
 from typing_extensions import override
+import os
+
 from google.adk.artifacts import GcsArtifactService
 from google.genai import types
 
@@ -29,7 +31,9 @@ _supported_text_types = {
 class GcsPartArtifactService(GcsArtifactService):
     """GcsArtifactService wrapper for part content type."""
 
-    def __init__(self, bucket_name: str, **kwargs):
+    def __init__(self, bucket_name: Optional[str] = None, **kwargs):
+        if not bucket_name:
+            bucket_name = os.environ["AI_STORAGE_BUCKET"]
         super().__init__(bucket_name, **kwargs)
 
     @override

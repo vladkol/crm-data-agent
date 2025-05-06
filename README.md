@@ -66,22 +66,23 @@ or, with `uv`:
 
 `AI_STORAGE_BUCKET` - [REQUIRED] Cloud Storage Bucket for ADK Asset Service and for staging Vertex AI assets.
 
-`BQ_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project that will be used for running BigQuery query jobs. If empty, `GOOGLE_CLOUD_PROJECT` value will be used.
-
 `BQ_LOCATION` - [REQUIRED] BigQuery location of the Salesforce datasets.
-
-`SFDC_DATA_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project of the Salesforce dataset. If empty, `BQ_LOCATION` value will be used.
 
 `SFDC_BQ_DATASET` - [REQUIRED] Name of the Salesforce dataset (in project *SFDC_DATA_PROJECT_ID*).
 
+`BQ_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project that will be used for running BigQuery query jobs. If not defined, `GOOGLE_CLOUD_PROJECT` value will be used.
+
+`SFDC_DATA_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project of the Salesforce dataset.
+If not defined, `BQ_LOCATION` value will be used.
+
 `SFDC_METADATA_FILE` - *[OPTIONAL]* Salesforce Metadata file (do not change this value if using the demo data).
 
-> If you are deploying a demo, leave `BQ_PROJECT_ID` and `SFDC_DATA_PROJECT_ID` empty.
+> If you are deploying a demo, do not set `BQ_PROJECT_ID` and `SFDC_DATA_PROJECT_ID`.
 > All resources will be created in GOOGLE_CLOUD_PROJECT project.
 
 **If you deploy the agent to Cloud Run**, its service account must have the following roles:
 
-* BigQuery Job User (`roles/bigquery.jobUser`) in BQ_PROJECT_ID project (or GOOGLE_CLOUD_PROJECT, if BQ_PROJECT_ID is empty).
+* BigQuery Job User (`roles/bigquery.jobUser`) in BQ_PROJECT_ID project (or GOOGLE_CLOUD_PROJECT, if BQ_PROJECT_ID is not defined).
 * BigQuery Data Viewer (`roles/bigquery.dataViewer`) for SFDC_BQ_DATASET dataset.
 * Storage Object User (`roles/storage.objectUser`) for AI_STORAGE_BUCKET bucket.
 * Vertex AI User (`roles/aiplatform.user`) in GOOGLE_CLOUD_PROJECT project.

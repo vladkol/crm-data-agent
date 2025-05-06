@@ -37,7 +37,7 @@ prompt = """
 ```
 
 Fix the error below. Do not simply exclude entities if it affects the algorithm.
-Do not repeat yourself.
+!!! Do not repeat yourself !!!
 
 ERROR: {validator_result}
 """

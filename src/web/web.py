@@ -368,7 +368,7 @@ async def app():
     with top:
         _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
-        question = st.chat_input("Ask a question about your data!")
+        question = st.chat_input("Ask a question about your data.")
         if "question" not in current_session.state:
             current_session.state["question"] = question
         with top:
