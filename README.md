@@ -10,7 +10,7 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 
 * The agent interprets questions about state of the business how it's reflected in CRM rather than directly referring to Salesforce data entities.
 * It generates SQL query to gather data necessary for answering the question
-* It creates interactive [Vega Lite 4](https://vega.github.io/vega-lite-v4/) diagrams.
+* It creates interactive [Vega-Lite 4](https://vega.github.io/vega-lite-v4/) diagrams.
 * It analyzes the results, provides key insights and recommended actions.
 
 ## 🕵🏻‍♀️ Simple questions are complex

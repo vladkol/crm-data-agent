@@ -20,7 +20,7 @@ from prompts.crm_business_analyst import (system_instruction
                                           as crm_business_analyst_instruction)
 
 
-BUSINESS_ANALYST_AGENT_MODEL_ID = "gemini-2.5-pro-preview-03-25"
+BUSINESS_ANALYST_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
 
 crm_business_analyst_agent = LlmAgent(
     model=BUSINESS_ANALYST_AGENT_MODEL_ID,

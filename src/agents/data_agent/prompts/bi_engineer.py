@@ -38,6 +38,11 @@ You are an experienced Business Intelligence engineer tasked with creating a dat
 **Your Task:**
 Generate a single, complete Vega-Lite **4** JSON specification for a chart that effectively visualizes the provided data to answer the `{question_that_sql_result_can_answer}`.
 
+**Approach:**
+
+1. Create a design of the chart and how every piece is connected to the data.
+2. Generate correct Vega-Lite 4 code that implements the plan.
+
 **Key Requirements & Best Practices:**
 
 1.  **Chart Type Selection:**
@@ -55,6 +60,8 @@ Generate a single, complete Vega-Lite **4** JSON specification for a chart that 
         * Only one filter node per dimension is allowed. Only "input": "select" is allowed.
         * Do not allow any other transforms on such dimensions.
         * Prioritize geographical dimensions.
+        * Avoid directly referring to `bind.options` as a whole.
+
     *   **Axes & Legends:**
         *   Use clear, concise axis titles and legend titles.
         *   Ensure legends accurately represent the encoding (e.g., color, shape) and include units (e.g., "$", "%", "Count") if applicable and known.

@@ -17,6 +17,7 @@ from functools import cache
 import io
 import json
 import jsonschema
+from pathlib import Path
 import os
 
 from pydantic import BaseModel
@@ -35,8 +36,9 @@ from tools.chart_evaluator import evaluate_chart
 
 
 MAX_RESULT_ROWS_DISPLAY = 50
-BI_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-03-25"
-BI_ENGINEER_FIX_AGENT_MODEL_ID = "gemini-2.5-pro-preview-03-25"
+BI_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
+BI_ENGINEER_FIX_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
+
 
 @cache
 def _init_environment():
@@ -101,13 +103,22 @@ def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
 
 
 def _create_chat(model: str, history: list):
+    vega_lite_spec = (Path(__file__).parent /
+                      "vega_lite4_schema.json").read_text()
     return get_genai_client().chats.create(
         model=model,
         config=GenerateContentConfig(
-            system_instruction="""
-                You are an experienced
-                Business Intelligence engineer,
-                proficient in building business charts and dashboards.""",
+            system_instruction=f"""
+You are an experienced Business Intelligence engineer,
+proficient in building business charts and dashboards using Vega Lite.
+You have good imagination, strong UX design skills, and you decent data engineering background.
+
+You always write Vega Lite 4 code according to its JSON schema:
+
+```json
+{vega_lite_spec}
+```
+            """.strip(),
             temperature=0.0001,
             top_p=0.0,
             seed=0,
