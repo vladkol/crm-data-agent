@@ -30,6 +30,7 @@ gcloud run deploy "{sys.argv[1]}"
         --port=8080
         --cpu=8
         --memory=32Gi
+        --cpu-boost
         --no-allow-unauthenticated
         --no-cpu-throttling
         --source "./src"

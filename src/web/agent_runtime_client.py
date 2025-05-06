@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import json
+import logging
 from typing import AsyncGenerator, Union, Optional
 from typing_extensions import override
 
@@ -17,6 +18,8 @@ import vertexai.agent_engines
 
 
 MAX_RUN_RETRIES = 10
+
+logger = logging.getLogger(__name__)
 
 class AgentRuntime(ABC):
     def __init__(self, session: Session):
@@ -73,6 +76,7 @@ async def sse_client(url, request, headers):
     if not headers:
         headers = {}
     headers["Accept"] = "text/event-stream"
+    headers["Cache-Control"] = "no-cache"
     try:
         # stream=True is essential for SSE
         # timeout=None can be used for very long-lived connections,
@@ -80,7 +84,7 @@ async def sse_client(url, request, headers):
         # A specific timeout (e.g., (3.05, 60)) for connect and read can be safer.
         with requests.post(url, json=request, stream=True, headers=headers, timeout=(60, 60*60*24*7)) as response:
             response.raise_for_status()  # Raise an exception for HTTP error codes (4xx or 5xx)
-            print(f"Connected to SSE stream at {url}")
+            logger.info(f"Connected to SSE stream at {url}")
 
             current_event_data_lines = []
             for line_bytes in response.iter_lines(): # iter_lines gives bytes
@@ -112,11 +116,11 @@ async def sse_client(url, request, headers):
                 yield full_data_string
 
     except requests.exceptions.RequestException as e:
-        print(f"Error connecting or streaming SSE: {e}")
+        logger.error(f"Error connecting or streaming SSE: {e}")
     except KeyboardInterrupt:
-        print("SSE stream manually interrupted.")
+        logging.warning("SSE stream manually interrupted.")
     finally:
-        print("SSE client finished.")
+        logging.info("SSE client finished.")
 
 class FastAPIEngineRuntime(AgentRuntime):
     def __init__(self,
