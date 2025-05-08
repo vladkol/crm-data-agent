@@ -22,9 +22,6 @@ import os
 import subprocess
 from time import time
 
-from websockets import State
-from websockets.asyncio.client import connect
-
 import pandas as pd
 import streamlit as st
 
