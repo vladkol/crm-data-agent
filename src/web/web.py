@@ -37,7 +37,7 @@ from google.adk.sessions import VertexAiSessionService
 
 from PIL import Image
 
-from shared.agent_artifact_service import GcsPartArtifactService
+from google.adk.artifacts import GcsArtifactService
 from agent_runtime_client import AgentEngineRuntime, FastAPIEngineRuntime
 
 MAX_RUN_RETRIES = 10
@@ -145,36 +145,57 @@ def _process_event(event: Event):
                 app_name=session.app_name, user_id=session.user_id,
                 session_id=session.id, filename=filename, version=version
             )
-            if (artifact.inline_data
-                and not filename.startswith(f"{event.invocation_id}.")
-                and artifact.inline_data.mime_type.startswith('image/')):
+            if not artifact.inline_data or not artifact.inline_data.data:
+                continue
+            if (artifact.inline_data.mime_type.startswith('image/')):
+                    # skip images with the invocation id filename
+                    if filename.startswith(f"{event.invocation_id}."):
+                        continue
                     with BytesIO(artifact.inline_data.data) as image_io:
                         with Image.open(image_io) as img:
                             st.image(img)
-            elif artifact.text:
-                if filename.endswith(".json"):
-                    st.json(artifact.text)
-                elif filename.endswith(".vg"):
-                    data_file_name = filename.rsplit(".", 1)[0] + ".parquet"
-                    pq_bytes = artifact_service.load_artifact(
-                        app_name=session.app_name,
-                        user_id=session.user_id,
-                        session_id=session.id,
-                        filename=data_file_name,
-                        version=version).inline_data.data # type: ignore
-                    chart_dict = json.loads(artifact.text)
-                    if pq_bytes:
-                        with BytesIO(pq_bytes) as pq_file:
-                            df = pd.read_parquet(pq_file)
-                        st.dataframe(df)
-                        chart_dict.pop("data", None)
-                    else:
-                        df = None
-                    st.vega_lite_chart(data=df,
-                                       spec=chart_dict,
-                                       use_container_width=False)
+            elif (artifact.inline_data.mime_type ==
+                        "application/vnd.vegalite.v4+json"
+                  or filename.endswith(".vg")
+                      and (artifact.inline_data.mime_type in
+                            ["application/json", "text/plain"])
+            ):
+                # find a parquet file to supply the chart with data
+                data_file_name = filename.rsplit(".", 1)[0] + ".parquet"
+                parquet_file = artifact_service.load_artifact(
+                    app_name=session.app_name,
+                    user_id=session.user_id,
+                    session_id=session.id,
+                    filename=data_file_name,
+                    version=version)
+                if parquet_file and parquet_file.inline_data:
+                    pq_bytes = parquet_file.inline_data.data # type: ignore
                 else:
-                    st.markdown(artifact.text, unsafe_allow_html=True)
+                    pq_bytes = None
+                text = artifact.inline_data.data.decode("utf-8")
+                chart_dict = json.loads(text)
+                if pq_bytes:
+                    with BytesIO(pq_bytes) as pq_file:
+                        df = pd.read_parquet(pq_file)
+                    st.dataframe(df)
+                    chart_dict.pop("data", None)
+                else:
+                    df = None
+                st.vega_lite_chart(data=df,
+                                    spec=chart_dict,
+                                    use_container_width=False)
+            elif artifact.inline_data.mime_type == "application/json":
+                st.json(artifact.inline_data.data.decode("utf-8"))
+            elif artifact.inline_data.mime_type == "text/markdown":
+                st.markdown(artifact.inline_data.data.decode("utf-8"),
+                            unsafe_allow_html=True)
+            elif artifact.inline_data.mime_type == "text/csv":
+                st.markdown(
+                    "```csv\n" +
+                    artifact.inline_data.data.decode("utf-8") + "\n```",
+                    unsafe_allow_html=True)
+            elif artifact.inline_data.mime_type.startswith("text/"):
+                st.text(artifact.inline_data.data.decode("utf-8"))
 
     if function_calls:
         _process_function_calls(function_calls)
@@ -235,7 +256,7 @@ def _initialize_configuration():
         project=os.environ["GOOGLE_CLOUD_PROJECT"],
         location=os.environ["GOOGLE_CLOUD_LOCATION"],
     )
-    artifact_service = GcsPartArtifactService(
+    artifact_service = GcsArtifactService(
         bucket_name=vertex_ai_bucket
     )
     memory_service = InMemoryMemoryService()

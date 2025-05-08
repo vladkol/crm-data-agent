@@ -18,6 +18,9 @@ import os
 from pathlib import Path
 import sys
 
+from google.adk.artifacts import GcsArtifactService
+from fast_api_app import get_fast_api_app
+
 sys.path.append(str(Path(__file__).parent.parent))
 from shared.config_env import prepare_environment
 
@@ -29,16 +32,13 @@ os.environ["AGENT_DIR"] = str(Path(__file__).parent.parent /
 prepare_environment()
 ########################################################
 
-from shared.agent_artifact_service import GcsPartArtifactService
-InMemoryArtifactService = GcsPartArtifactService # TODO: make it configurable
-from fast_api_app import get_fast_api_app
-
 api_app = get_fast_api_app(
     agent_dir=os.environ["AGENT_DIR"],
     trace_to_cloud=True,
     session_db_url=f"agentengine://{os.environ['AGENT_ENGINE_ID']}",
-    artifact_service=GcsPartArtifactService(),
-    web=False
+    artifact_service=GcsArtifactService(
+        bucket_name=os.environ["AI_STORAGE_BUCKET"]
+    )
 )
 
 

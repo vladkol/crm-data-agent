@@ -63,42 +63,35 @@ logger = logging.getLogger(__name__)
 
 class ApiServerSpanExporter(export.SpanExporter):
 
-  def __init__(self, trace_dict):
-    self.trace_dict = trace_dict
+    def __init__(self, trace_dict):
+      self.trace_dict = trace_dict
 
-  def export(
-      self, spans: typing.Sequence[ReadableSpan]
-  ) -> export.SpanExportResult:
-    for span in spans:
-      if (
-          span.name == "call_llm"
-          or span.name == "send_data"
-          or span.name.startswith("tool_response")
-      ):
-        attributes = dict(span.attributes) # type: ignore
-        attributes["trace_id"] = span.get_span_context().trace_id # type: ignore
-        attributes["span_id"] = span.get_span_context().span_id # type: ignore
-        if attributes.get("gcp.vertex.agent.event_id", None): # type: ignore
-          self.trace_dict[attributes["gcp.vertex.agent.event_id"]] = attributes # type: ignore
-    return export.SpanExportResult.SUCCESS
+    def export(
+        self, spans: typing.Sequence[ReadableSpan]
+    ) -> export.SpanExportResult:
+        for span in spans:
+            if (
+                span.name == "call_llm"
+                or span.name == "send_data"
+                or span.name.startswith("tool_response")
+            ):
+                attributes = dict(span.attributes) # type: ignore
+                attributes["trace_id"] = span.get_span_context().trace_id # type: ignore
+                attributes["span_id"] = span.get_span_context().span_id # type: ignore
+                if attributes.get("gcp.vertex.agent.event_id", None): # type: ignore
+                  self.trace_dict[attributes["gcp.vertex.agent.event_id"]] = attributes # type: ignore
+        return export.SpanExportResult.SUCCESS
 
-  def force_flush(self, timeout_millis: int = 30000) -> bool:
-    return True
+    def force_flush(self, timeout_millis: int = 30000) -> bool:
+      return True
 
 
 class AgentRunRequest(BaseModel):
-  app_name: str
-  user_id: str
-  session_id: str
-  new_message: types.Content
-  streaming: bool = False
-
-
-class AddSessionToEvalSetRequest(BaseModel):
-  eval_id: str
-  session_id: str
-  user_id: str
-
+    app_name: str
+    user_id: str
+    session_id: str
+    new_message: types.Content
+    streaming: bool = False
 
 
 def get_fast_api_app(
@@ -106,7 +99,6 @@ def get_fast_api_app(
     agent_dir: str,
     session_db_url: str = "",
     allow_origins: Optional[list[str]] = None,
-    web: bool,
     trace_to_cloud: bool = False,
     lifespan: Optional[Lifespan[FastAPI]] = None,
     artifact_service: Optional[BaseArtifactService] = None
@@ -172,36 +164,20 @@ def get_fast_api_app(
   # Build the Session service
   agent_engine_id = ""
   if session_db_url:
-    if session_db_url.startswith("agentengine://"):
-      # Create vertex session service
-      agent_engine_id = session_db_url.split("://")[1]
-      if not agent_engine_id:
-        raise ValueError("Agent engine id can not be empty.")
-      session_service = VertexAiSessionService(
-          os.environ["GOOGLE_CLOUD_PROJECT"],
-          os.environ["GOOGLE_CLOUD_LOCATION"],
-      )
-    else:
-      session_service = DatabaseSessionService(db_url=session_db_url)
+      if session_db_url.startswith("agentengine://"):
+        # Create vertex session service
+        agent_engine_id = session_db_url.split("://")[1]
+        if not agent_engine_id:
+          raise ValueError("Agent engine id can not be empty.")
+        session_service = VertexAiSessionService(
+            os.environ["GOOGLE_CLOUD_PROJECT"],
+            os.environ["GOOGLE_CLOUD_LOCATION"],
+        )
+      else:
+          session_service = DatabaseSessionService(db_url=session_db_url)
   else:
-    session_service = InMemorySessionService()
+      session_service = InMemorySessionService()
 
-  @app.get("/list-apps")
-  def list_apps() -> list[str]:
-    base_path = Path.cwd() / agent_dir
-    if not base_path.exists():
-      raise HTTPException(status_code=404, detail="Path not found")
-    if not base_path.is_dir():
-      raise HTTPException(status_code=400, detail="Not a directory")
-    agent_names = [
-        x
-        for x in os.listdir(base_path)
-        if os.path.isdir(os.path.join(base_path, x))
-        and not x.startswith(".")
-        and x != "__pycache__"
-    ]
-    agent_names.sort()
-    return agent_names
 
   @app.get("/debug/trace/{event_id}")
   def get_trace_dict(event_id: str) -> Any:

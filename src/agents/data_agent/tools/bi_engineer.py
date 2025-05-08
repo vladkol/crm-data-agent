@@ -269,18 +269,19 @@ def bi_engineer_tool(original_business_question: str,
                                    data=parquet_bytes,
                                    mime_type="application/parquet"))
     file_name = f"{tool_context.invocation_id}.vg"
-    tool_context.save_artifact(filename=file_name, artifact=Part.from_text(
-            text=vega_chart_json))
+    tool_context.save_artifact(filename=file_name,
+                               artifact=Part.from_bytes(
+                                    mime_type="application/json",
+                                    data=vega_chart_json.encode("utf-8")))
     with io.BytesIO() as file:
         vega_chart.save(file, "png", ppi=72)
         file.seek(0)
         data = file.getvalue()
         new_image_name = f"{tool_context.invocation_id}.png"
         tool_context.save_artifact(filename=new_image_name,
-                                artifact=Part.from_bytes(
-                                    mime_type="image/png",
-                                    data=data
-                                ))
+                                   artifact=Part.from_bytes(
+                                        mime_type="image/png",
+                                        data=data))
         tool_context.state["chart_image_name"] = new_image_name
 
     csv = df.head(MAX_RESULT_ROWS_DISPLAY).to_csv(index=False)
