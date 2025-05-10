@@ -102,7 +102,7 @@ def _process_function_responses(function_responses):
       st.write(fr.response)
 
 
-def _process_event(event: Event):
+async def _process_event(event: Event):
     if not event:
         return
     session = st.session_state.adk_session
@@ -138,7 +138,7 @@ def _process_event(event: Event):
 
     if event.actions.artifact_delta:
         for filename, version in event.actions.artifact_delta.items():
-            artifact = artifact_service.load_artifact(
+            artifact = await artifact_service.load_artifact(
                 app_name=session.app_name, user_id=session.user_id,
                 session_id=session.id, filename=filename, version=version
             )
@@ -159,7 +159,7 @@ def _process_event(event: Event):
             ):
                 # find a parquet file to supply the chart with data
                 data_file_name = filename.rsplit(".", 1)[0] + ".parquet"
-                parquet_file = artifact_service.load_artifact(
+                parquet_file = await artifact_service.load_artifact(
                     app_name=session.app_name,
                     user_id=session.user_id,
                     session_id=session.id,
@@ -200,9 +200,9 @@ def _process_event(event: Event):
         _process_function_responses(function_responses)
 
 
-def _render_chat(events):
+async def _render_chat(events):
     for event in events:
-        _process_event(event)
+        await _process_event(event)
 
 
 ######################### Configuration management #########################
@@ -300,7 +300,7 @@ async def ask_agent(question: str):
     ],role="user")
 
     user_event = Event(author="user", content=content)
-    _render_chat([user_event])
+    await _render_chat([user_event])
 
     runtime_name = os.environ["RUNTIME_ENVIRONMENT"].lower()
     if runtime_name == "local":
@@ -324,7 +324,7 @@ async def ask_agent(question: str):
                 break
             if event.content and event.content.role == "model":
                 model_events_cnt += 1
-            _render_chat([event])
+            await _render_chat([event])
 
     # Re-retrieve the session
     st.session_state.adk_session = st.session_state.session_service.get_session(
@@ -384,7 +384,7 @@ async def app():
                 )
             st.session_state.adk_session = selected_session
     with top:
-        _render_chat(st.session_state.adk_session.events) # type: ignore
+        await _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
         question = st.chat_input("Ask a question about your data.")
         if "question" not in current_session.state:

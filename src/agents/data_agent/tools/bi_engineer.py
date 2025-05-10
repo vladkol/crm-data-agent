@@ -133,7 +133,7 @@ You always write Vega Lite 4 code according to its JSON schema:
     )
 
 
-def bi_engineer_tool(original_business_question: str,
+async def bi_engineer_tool(original_business_question: str,
                      question_that_sql_result_can_answer: str,
                      sql_code: str,
                      notes: str,
@@ -264,12 +264,12 @@ def bi_engineer_tool(original_business_question: str,
         print("And the chart seem good to me.")
     data_file_name = f"{tool_context.invocation_id}.parquet"
     parquet_bytes = df.to_parquet()
-    tool_context.save_artifact(filename=data_file_name,
+    await tool_context.save_artifact(filename=data_file_name,
                                artifact=Part.from_bytes(
                                    data=parquet_bytes,
                                    mime_type="application/parquet"))
     file_name = f"{tool_context.invocation_id}.vg"
-    tool_context.save_artifact(filename=file_name,
+    await tool_context.save_artifact(filename=file_name,
                                artifact=Part.from_bytes(
                                     mime_type="application/json",
                                     data=vega_chart_json.encode("utf-8")))
@@ -278,7 +278,7 @@ def bi_engineer_tool(original_business_question: str,
         file.seek(0)
         data = file.getvalue()
         new_image_name = f"{tool_context.invocation_id}.png"
-        tool_context.save_artifact(filename=new_image_name,
+        await tool_context.save_artifact(filename=new_image_name,
                                    artifact=Part.from_bytes(
                                         mime_type="image/png",
                                         data=data))

@@ -40,22 +40,22 @@ from tools.data_engineer import data_engineer
 ROOT_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06" # "gemini-2.5-pro-preview-03-25"
 
 
-def before_model_callback(callback_context: CallbackContext,
+async def before_model_callback(callback_context: CallbackContext,
                           llm_request: LlmRequest) -> LlmResponse | None:
     chart_image_name = callback_context.state.get("chart_image_name", None)
     if chart_image_name:
         callback_context.state["chart_image_name"] = ""
         llm_request.contents[0].parts.append( # type: ignore
-            callback_context.load_artifact(
+            await callback_context.load_artifact(
                 filename=chart_image_name)) # type: ignore
     return None
 
 
-def before_agent_callback(callback_context: CallbackContext) -> Optional[Content]:
+async def before_agent_callback(callback_context: CallbackContext) -> Optional[Content]:
     pass
 
 
-def after_model_callback(callback_context: CallbackContext,
+async def after_model_callback(callback_context: CallbackContext,
                           llm_response: LlmResponse) -> LlmResponse | None:
     pass
 
