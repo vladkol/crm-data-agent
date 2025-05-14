@@ -13,6 +13,20 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 * It creates interactive [Vega-Lite 4](https://vega.github.io/vega-lite-v4/) diagrams.
 * It analyzes the results, provides key insights and recommended actions.
 
+## Google Agent Development Kit
+
+<img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" style="width:64px;"/>
+
+The agent is built using [Agent Development Kit](https://google.github.io/adk-docs/) (ADK) - a flexible
+and modular framework for developing and deploying AI agents.
+
+The sample also demonstrates:
+
+* How to build a Web UI for ADK-based data agents using [streamlit](https://streamlit.io/).
+* How to use [Artifact Services](https://google.github.io/adk-docs/artifacts/) with ADK.
+* How to stream and interpret session [events](https://google.github.io/adk-docs/events/).
+* How to create and use a custom [Session Service](https://google.github.io/adk-docs/sessions/session/).
+
 ## 🕵🏻‍♀️ Simple questions are complex
 
 <img src="tutorial/img/top_5_customers.jpg" alt="Top 5 customers by impact in the US this year" style="width:800px;"/>
@@ -26,11 +40,13 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 
 ### Screenshot
 
-<img src="tutorial/img/lead_sources_screenshot.jpg" alt="What are our best lead source in every country?" style="width:800px;"/>
+<a href="tutorial/img/top_5_customers_screenshot.png">
+<img src="tutorial/img/top_5_customers_screenshot.png" alt="What are our best lead source in every country?" style="width:900px;"/>
+</a>
 
 ### High-Level Design
 
-<img src="tutorial/img/data_agent_design.jpg" alt="What are our best lead source in every country?" style="width:800px;"/>
+<img src="tutorial/img/data_agent_design.jpg" alt="Top 5 customers in every country" style="width:800px;"/>
 
 ## 🚀 Deploy and Run
 
@@ -65,10 +81,13 @@ or, with `uv`:
 `GOOGLE_CLOUD_LOCATION` - [REQUIRED] Google Cloud Region to use with Vertex AI (and Cloud Run if deployed).
 
 `AI_STORAGE_BUCKET` - [REQUIRED] Cloud Storage Bucket for ADK Asset Service and for staging Vertex AI assets.
+Please create one.
 
 `BQ_LOCATION` - [REQUIRED] BigQuery location of the Salesforce datasets.
 
 `SFDC_BQ_DATASET` - [REQUIRED] Name of the Salesforce dataset (in project *SFDC_DATA_PROJECT_ID*).
+
+`FIREBASE_SESSION_DATABASE` - [REQUIRED] Name of a Firebase database. Please create one. ADK will store its session data here.
 
 `BQ_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project that will be used for running BigQuery query jobs. If not defined, `GOOGLE_CLOUD_PROJECT` value will be used.
 
@@ -101,9 +120,14 @@ gcloud services enable \
 
 ### Create Vertex AI Agent Engine Instance
 
-Run `utils/get_agent_engine.py` script.
+To be able to use Vertex AI agent services and store session data,
+the agent should be registered in [Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine).
 
-> The script will modify `src/.env` file by adding `AGENT_ENGINE_ID` variable.
+* Run `utils/get_agent_engine.py` script.
+
+It will register an empty agent with name identified by `AGENT_NAME` environment variable.
+
+> The script will modify `src/.env` file by adding `GOOGLE_CLOUD_AGENT_ENGINE_ID` variable.
 
 ### Deploy Salesforce Data
 

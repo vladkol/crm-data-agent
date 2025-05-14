@@ -38,8 +38,8 @@ def _deploy_agent(agent_name: str)->str:
 
 def get_agent_engine(agent_name: str) -> str:
     """Deploys an agent engine instance without code.
-    Sets AGENT_ENGINE_ID environment variable and write it to .env file.
-    If AGENT_ENGINE_ID environment variable is not empty,
+    Sets GOOGLE_CLOUD_AGENT_ENGINE_ID environment variable and write it to .env file.
+    If GOOGLE_CLOUD_AGENT_ENGINE_ID environment variable is not empty,
     does nothing and returns it
 
     Args:
@@ -49,14 +49,14 @@ def get_agent_engine(agent_name: str) -> str:
         str: Agent Engine Id
     """
     dotenv_path = Path(__file__).parent.parent / "src" / ".env"
-    if "AGENT_ENGINE_ID" not in os.environ or not os.environ["AGENT_ENGINE_ID"]:
+    if "GOOGLE_CLOUD_AGENT_ENGINE_ID" not in os.environ or not os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"]:
         resource = _deploy_agent(agent_name)
         agent_id = resource.split("/")[-1]
-        os.environ["AGENT_ENGINE_ID"] = agent_id
-        print(f"Adding variable AGENT_ENGINE_ID=\"{agent_id}\" to .env file.")
+        os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"] = agent_id
+        print(f"Adding variable GOOGLE_CLOUD_AGENT_ENGINE_ID=\"{agent_id}\" to .env file.")
         with dotenv_path.open("a") as f:
-            f.write(f"AGENT_ENGINE_ID=\"{agent_id}\"")
-    return os.environ["AGENT_ENGINE_ID"]
+            f.write(f"GOOGLE_CLOUD_AGENT_ENGINE_ID=\"{agent_id}\"")
+    return os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"]
 
 if __name__ == "__main__":
     prepare_environment()

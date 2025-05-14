@@ -30,7 +30,9 @@ from google.genai.types import Content, Part
 from google.adk.events import Event
 from google.adk.sessions import Session
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from google.adk.sessions import VertexAiSessionService
+from shared.firestore_session_store import (FirestoreSessionService
+                                            as SessionService)
+# from google.adk.sessions import VertexAiSessionService
 
 from PIL import Image
 
@@ -102,9 +104,9 @@ def _process_function_responses(function_responses):
       st.write(fr.response)
 
 
-async def _process_event(event: Event):
+async def _process_event(event: Event) -> bool:
     if not event:
-        return
+        return False
     session = st.session_state.adk_session
     artifact_service = st.session_state.artifact_service
 
@@ -198,6 +200,7 @@ async def _process_event(event: Event):
         _process_function_calls(function_calls)
     if function_responses:
         _process_function_responses(function_responses)
+    return True
 
 
 async def _render_chat(events):
@@ -246,12 +249,16 @@ def _get_user_id() -> str:
 def _initialize_configuration():
     if "adk_configured" in st.session_state:
         return st.session_state.adk_configured
-    agent_engine_id = os.environ["AGENT_ENGINE_ID"]
+    agent_engine_id = os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"]
     vertex_ai_bucket = os.environ["AI_STORAGE_BUCKET"]
 
-    session_service = VertexAiSessionService(
-        project=os.environ["GOOGLE_CLOUD_PROJECT"],
-        location=os.environ["GOOGLE_CLOUD_LOCATION"],
+    # session_service = VertexAiSessionService(
+    #     project=os.environ["GOOGLE_CLOUD_PROJECT"],
+    #     location=os.environ["GOOGLE_CLOUD_LOCATION"],
+    # )
+    session_service = SessionService(
+          database=os.environ["FIREBASE_SESSION_DATABASE"],
+          sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
     )
     artifact_service = GcsArtifactService(
         bucket_name=vertex_ai_bucket
@@ -306,7 +313,7 @@ async def ask_agent(question: str):
     if runtime_name == "local":
         runtime = FastAPIEngineRuntime(session)
     elif runtime_name == "agent_engine":
-        runtime = AgentEngineRuntime(session, os.environ["AGENT_ENGINE_ID"])
+        runtime = AgentEngineRuntime(session, os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"])
     else:
         ValueError(f"`{runtime_name}` is not a valid runtime name.")
 

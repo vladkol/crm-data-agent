@@ -37,7 +37,7 @@ from tools.crm_business_analyst import crm_business_analyst_agent
 from tools.data_engineer import data_engineer
 
 
-ROOT_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06" # "gemini-2.5-pro-preview-03-25"
+ROOT_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
 
 
 async def before_model_callback(callback_context: CallbackContext,

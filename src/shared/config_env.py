@@ -28,6 +28,7 @@ _env_requirements = {
     "BQ_PROJECT_ID": "$GOOGLE_CLOUD_PROJECT",
     "SFDC_DATA_PROJECT_ID": "$BQ_PROJECT_ID",
     "SFDC_BQ_DATASET": None,
+    "FIREBASE_SESSION_DATABASE": None,
     "BQ_LOCATION": "US",
     "SFDC_METADATA_FILE": "sfdc_metadata.json", # default value
     "AI_STORAGE_BUCKET": None,
@@ -70,7 +71,8 @@ def prepare_environment():
         if name in os.environ and len(os.environ[name].strip()) > 0:
             continue
         if val is None or val.strip() == "":
-            logging.error(f"{name} variable must be set.")
+            logging.error((f"{name} environment variable must be set"
+                          "(check .env file)."))
             sys.exit(1)
         elif val.startswith("$"):
             ref_name = val[1:]

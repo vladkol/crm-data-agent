@@ -22,10 +22,12 @@ import sys
 
 from vertexai import init
 from vertexai.agent_engines import list as list_engines
-from google.adk.sessions import VertexAiSessionService
+# from google.adk.sessions import VertexAiSessionService
 
 sys.path.append(str(Path(__file__).parent.parent))
 from src.shared.config_env import prepare_environment
+from src.shared.firestore_session_store import (FirestoreSessionService
+                                            as SessionService)
 
 prepare_environment()
 
@@ -41,7 +43,10 @@ def _clean_agent(agent_name: str, user_id: str):
         return
     logging.info(f"Cleaning up sessions of user {user_id} in agent `{agent_name}`.")
     agent = agents[0]
-    service = VertexAiSessionService()
+    service = SessionService(
+        database=os.environ["FIREBASE_SESSION_DATABASE"],
+        sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
+    )
     real_user_id = hashlib.md5(user_id.encode()).hexdigest()
     for s in service.list_sessions(
             app_name=agent.resource_name, user_id=real_user_id).sessions:
@@ -53,8 +58,8 @@ def _clean_agent(agent_name: str, user_id: str):
 
 
 if __name__ == "__main__":
-    if "AGENT_ENGINE_ID" not in os.environ or not os.environ["AGENT_ENGINE_ID"]:
-        logging.error("Configuration variable AGENT_ENGINE_ID is not set.")
+    if "GOOGLE_CLOUD_AGENT_ENGINE_ID" not in os.environ or not os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"]:
+        logging.error("Configuration variable GOOGLE_CLOUD_AGENT_ENGINE_ID is not set.")
         sys.exit(1)
     agent_name = os.environ["AGENT_NAME"]
     if len(sys.argv) < 2:
