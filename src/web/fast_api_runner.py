@@ -34,7 +34,7 @@ prepare_environment()
 
 api_app = get_fast_api_app(
     agent_dir=os.environ["AGENT_DIR"],
-    trace_to_cloud=True,
+    trace_to_cloud=False,
     session_db_url=f"agentengine://{os.environ['GOOGLE_CLOUD_AGENT_ENGINE_ID']}",
     artifact_service=GcsArtifactService(
         bucket_name=os.environ["AI_STORAGE_BUCKET"]

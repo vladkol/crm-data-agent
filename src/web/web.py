@@ -27,7 +27,7 @@ import streamlit as st
 
 from google.genai.types import Content, Part
 
-from google.adk.events import Event
+from google.adk.events import Event, EventActions
 from google.adk.sessions import Session
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from shared.firestore_session_store import (FirestoreSessionService
@@ -270,6 +270,35 @@ def _initialize_configuration():
     st.session_state.memory_service = memory_service
     st.session_state.adk_configured = True
 
+    # Cleaning up empty sessions
+    sessions_list = _get_all_sessions()
+    deleted_sessions = []
+    for index, s in enumerate(sessions_list):
+        session = session_service.get_session(
+            app_name=st.session_state.app_name,
+            user_id=_get_user_id(),
+            session_id=s.id)
+        if "RUNNING_QUERY" not in session.state: # type: ignore
+            # Deleting empty session.
+            # Couldn't come with a better place
+            # without increasing complexity.
+            try:
+                session_service.delete_session(
+                    app_name=st.session_state.app_name,
+                    user_id=_get_user_id(),
+                    session_id=s.id
+                )
+            except Exception as ex:
+                logging.warning("Couldn't delete a session." \
+                                f"It may be deleted already:\n{ex}")
+            deleted_sessions.append(index)
+        else:
+            # We have a session to select
+            break
+    while deleted_sessions:
+        sessions_list.pop(deleted_sessions[-1])
+        deleted_sessions.pop(-1)
+
 
 ######################### Session management #########################
 
@@ -313,11 +342,24 @@ async def ask_agent(question: str):
     if runtime_name == "local":
         runtime = FastAPIEngineRuntime(session)
     elif runtime_name == "agent_engine":
-        runtime = AgentEngineRuntime(session, os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"])
+        runtime = AgentEngineRuntime(
+            session,
+            os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"])
     else:
         ValueError(f"`{runtime_name}` is not a valid runtime name.")
 
     model_events_cnt = 0 # Count valid model events in this run
+    st.session_state.session_service.append_event(
+        session=st.session_state.adk_session,
+        event=Event(
+            author="runtime",
+            actions=EventActions(
+                state_delta={
+                    "RUNNING_QUERY": True
+                }
+            )
+        )
+    )
     for _ in range(MAX_RUN_RETRIES):
         if model_events_cnt > 0:
             break
@@ -332,7 +374,17 @@ async def ask_agent(question: str):
             if event.content and event.content.role == "model":
                 model_events_cnt += 1
             await _render_chat([event])
-
+    st.session_state.session_service.append_event(
+        session=st.session_state.adk_session,
+        event=Event(
+            author="runtime",
+            actions=EventActions(
+                state_delta={
+                    "RUNNING_QUERY": False
+                }
+            )
+        )
+    )
     # Re-retrieve the session
     st.session_state.adk_session = st.session_state.session_service.get_session(
         app_name=session.app_name,
@@ -354,17 +406,28 @@ async def app():
             sessions_list = _get_all_sessions()
     else:
         sessions_list = _get_all_sessions()
+    session_service = st.session_state.session_service
     current_session = None
+    current_index = 0
     if "adk_session" in st.session_state:
         current_session = st.session_state.adk_session
-    elif sessions_list:
-        current_session = st.session_state.session_service.get_session(
-            app_name=st.session_state.app_name,
-            user_id=_get_user_id(),
-            session_id=sessions_list[0].id)
+    # elif sessions_list:
+    #     for index, s in enumerate(sessions_list):
+    #         session = session_service.get_session(
+    #             app_name=st.session_state.app_name,
+    #             user_id=_get_user_id(),
+    #             session_id=s.id
+    #         )
+    #         if not session.state.get("RUNNING_QUERY", False):
+    #             current_session = session
+    #             current_index = index
+    #             break
+
     if not current_session:
-        current_session = _create_session()
-    st.session_state.adk_session = current_session
+        with st.spinner("Creating a new session...", show_time=False):
+            current_session = _create_session()
+        st.session_state.adk_session = current_session
+        st.rerun()
 
     with st.sidebar:
         st.markdown("### Sessions")
@@ -380,11 +443,11 @@ async def app():
         sessions = {s.id : s for s in sessions_list}
         selected_option = st.selectbox("Select a session:",
                                        session_ids,
-                                       index=0)
+                                       index=current_index)
         if selected_option and selected_option != current_session.id: # type: ignore
             selected_session = sessions[selected_option]
             with st.spinner("Loading...", show_time=False):
-                selected_session = st.session_state.session_service.get_session(
+                selected_session = session_service.get_session(
                     app_name=selected_session.app_name,
                     user_id=selected_session.user_id,
                     session_id=selected_session.id
