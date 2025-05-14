@@ -11,6 +11,7 @@ pandas
 google-cloud-aiplatform[adk,agent_engines]==1.91.*
 google-cloud-bigquery[pandas]
 google-cloud-bigquery-storage
+google-cloud-firestore==2.20.*
 altair
 vl-convert-python
 python-dotenv
