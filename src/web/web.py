@@ -406,28 +406,44 @@ async def app():
             sessions_list = _get_all_sessions()
     else:
         sessions_list = _get_all_sessions()
+    session_ids = [s.id for s in sessions_list]
     session_service = st.session_state.session_service
     current_session = None
     current_index = 0
+    if "session" in st.query_params:
+        selected_session_id = st.query_params["session"]
+        if selected_session_id in session_ids:
+            selected_session_id = st.query_params["session"]
+            if (
+                "adk_session" in st.session_state
+                and st.session_state.adk_session.id != selected_session_id
+            ):
+                st.session_state.pop("adk_session")
+            current_index = session_ids.index(selected_session_id)
+        else:
+            st.query_params.pop("session")
+            selected_session_id = -1
+    else:
+        selected_session_id = -1
     if "adk_session" in st.session_state:
         current_session = st.session_state.adk_session
-    # elif sessions_list:
-    #     for index, s in enumerate(sessions_list):
-    #         session = session_service.get_session(
-    #             app_name=st.session_state.app_name,
-    #             user_id=_get_user_id(),
-    #             session_id=s.id
-    #         )
-    #         if not session.state.get("RUNNING_QUERY", False):
-    #             current_session = session
-    #             current_index = index
-    #             break
+    elif selected_session_id != -1:
+        selected_session = sessions_list[current_index]
+        with st.spinner("Loading...", show_time=False):
+            current_session = session_service.get_session(
+                app_name=selected_session.app_name,
+                user_id=selected_session.user_id,
+                session_id=selected_session.id
+            )
+            st.session_state.adk_session = current_session
 
     if not current_session:
         with st.spinner("Creating a new session...", show_time=False):
             current_session = _create_session()
         st.session_state.adk_session = current_session
         st.rerun()
+    else:
+        st.query_params["session"] = current_session.id
 
     with st.sidebar:
         st.markdown("### Sessions")
@@ -436,6 +452,7 @@ async def app():
                 st.session_state.pop("adk_session", None)
                 current_session = _create_session()
                 st.session_state.adk_session = current_session
+                st.query_params["session"] = current_session.id
             st.rerun()
 
         sessions_list = st.session_state.all_adk_sessions
@@ -453,6 +470,7 @@ async def app():
                     session_id=selected_session.id
                 )
             st.session_state.adk_session = selected_session
+            st.query_params["session"] = selected_session.id
     with top:
         await _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
