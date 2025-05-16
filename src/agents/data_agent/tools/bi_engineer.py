@@ -118,9 +118,10 @@ You always write Vega Lite 4 code according to its JSON schema:
 {vega_lite_spec}
 ```
             """.strip(),
-            temperature=0.0001,
+            temperature=0.1,
             top_p=0.0,
-            seed=0,
+            top_k=1,
+            seed=1,
             response_schema=VegaResult,
             response_mime_type="application/json",
             safety_settings=[

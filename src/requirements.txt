@@ -8,12 +8,12 @@ scikit-learn
 google-genai
 pillow
 pandas
-google-cloud-aiplatform[adk,agent_engines]==1.91.*
+google-cloud-aiplatform[adk,agent_engines]==1.93.0
 google-cloud-bigquery[pandas]
 google-cloud-bigquery-storage
 google-cloud-firestore==2.20.*
 altair
 vl-convert-python
 python-dotenv
-cloudpickle==3.1.*
-pydantic==2.11.*
+cloudpickle==3.1.1
+pydantic==2.11.4

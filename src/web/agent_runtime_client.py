@@ -55,11 +55,14 @@ class AgentEngineRuntime(AgentRuntime):
                 if isinstance(event, Event):
                     yield event
                 elif isinstance(event, dict):
-                    yield Event.model_validate(event)
+                    if not "author" in event:
+                        raise ValueError(f"Unrecognized event format. Data: {event}")
+                    else:
+                        yield Event.model_validate(event)
                 elif isinstance(event, str):
                     yield Event.model_validate_json(event)
                 else:
-                    raise Exception(f"Unknown event type: {type(event)}")
+                    raise ValueError(f"Unknown event type: {type(event)}. Data:\n{event}\n")
         finally:
             self.streaming = False
 

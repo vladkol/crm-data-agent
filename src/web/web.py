@@ -32,7 +32,6 @@ from google.adk.sessions import Session
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from shared.firestore_session_store import (FirestoreSessionService
                                             as SessionService)
-# from google.adk.sessions import VertexAiSessionService
 
 from PIL import Image
 
