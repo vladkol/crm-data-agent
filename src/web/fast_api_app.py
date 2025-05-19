@@ -53,15 +53,12 @@ from google.adk.artifacts import BaseArtifactService, InMemoryArtifactService
 from google.adk.events.event import Event
 from google.adk.memory import InMemoryMemoryService
 from google.adk.runners import Runner
-from google.adk.sessions import (
-    InMemorySessionService,
-    Session,
-    # VertexAiSessionService
-)
+from google.adk.sessions import Session
 
 sys.path.append(str(Path(__file__).parent.parent))
-from shared.firestore_session_store import (FirestoreSessionService
-                                            as SessionService)
+from shared.firestore_session_service import (
+    FirestoreSessionService as SessionService
+)
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +79,10 @@ class ApiServerSpanExporter(export.SpanExporter):
                 attributes = dict(span.attributes) # type: ignore
                 attributes["trace_id"] = span.get_span_context().trace_id # type: ignore
                 attributes["span_id"] = span.get_span_context().span_id # type: ignore
-                if attributes.get("gcp.vertex.agent.event_id", None): # type: ignore
-                  self.trace_dict[attributes["gcp.vertex.agent.event_id"]] = attributes # type: ignore
         return export.SpanExportResult.SUCCESS
 
     def force_flush(self, timeout_millis: int = 30000) -> bool:
-      return True
+        return True
 
 
 class AgentRunRequest(BaseModel):
@@ -101,7 +96,6 @@ class AgentRunRequest(BaseModel):
 def get_fast_api_app(
     *,
     agent_dir: str,
-    session_db_url: str = "",
     allow_origins: Optional[list[str]] = None,
     trace_to_cloud: bool = False,
     lifespan: Optional[Lifespan[FastAPI]] = None,
@@ -147,16 +141,16 @@ def get_fast_api_app(
     app = FastAPI(lifespan=internal_lifespan)
 
     if allow_origins:
-      app.add_middleware(
-          CORSMiddleware,
-          allow_origins=allow_origins,
-          allow_credentials=True,
-          allow_methods=["*"],
-          allow_headers=["*"],
-      )
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allow_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     if agent_dir not in sys.path:
-      sys.path.append(agent_dir)
+        sys.path.append(agent_dir)
 
     runner_dict = {}
     root_agent_dict = {}
@@ -166,44 +160,29 @@ def get_fast_api_app(
     memory_service = InMemoryMemoryService()
 
     # Build the Session service
-    agent_engine_id = ""
-    if session_db_url:
-        if session_db_url.startswith("agentengine://"):
-            # Create vertex session service
-            agent_engine_id = session_db_url.split("://")[1]
-            if not agent_engine_id:
-              raise ValueError("Agent engine id can not be empty.")
-            # session_service = VertexAiSessionService(
-            #     os.environ["GOOGLE_CLOUD_PROJECT"],
-            #     os.environ["GOOGLE_CLOUD_LOCATION"],
-            # )
-            session_service = SessionService(
-                database=os.environ["FIREBASE_SESSION_DATABASE"],
-                sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
-            )
-    else:
-        session_service = InMemorySessionService()
+    session_service = SessionService(
+        database=os.environ["FIREBASE_SESSION_DATABASE"],
+        sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
+    )
 
 
     @app.get("/debug/trace/{event_id}")
     def get_trace_dict(event_id: str) -> Any:
-      event_dict = trace_dict.get(event_id, None)
-      if event_dict is None:
-        raise HTTPException(status_code=404, detail="Trace not found")
-      return event_dict
+        event_dict = trace_dict.get(event_id, None)
+        if event_dict is None:
+            raise HTTPException(status_code=404, detail="Trace not found")
+        return event_dict
 
     @app.get(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}",
         response_model_exclude_none=True,
     )
     def get_session(app_name: str, user_id: str, session_id: str) -> Session:
-      # Connect to managed session if agent_engine_id is set.
-      app_name = agent_engine_id if agent_engine_id else app_name
       session = session_service.get_session(
           app_name=app_name, user_id=user_id, session_id=session_id
       )
       if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+          raise HTTPException(status_code=404, detail="Session not found")
       return session
 
     @app.get(
@@ -211,14 +190,12 @@ def get_fast_api_app(
         response_model_exclude_none=True,
     )
     def list_sessions(app_name: str, user_id: str) -> list[Session]:
-      # Connect to managed session if agent_engine_id is set.
-      app_name = agent_engine_id if agent_engine_id else app_name
-      return [
-          session
-          for session in session_service.list_sessions(
-              app_name=app_name, user_id=user_id
-          ).sessions
-      ]
+        return [
+            session
+            for session in session_service.list_sessions(
+                app_name=app_name, user_id=user_id
+            ).sessions
+        ]
 
     @app.post(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}",
@@ -230,23 +207,22 @@ def get_fast_api_app(
         session_id: str,
         state: Optional[dict[str, Any]] = None,
     ) -> Session:
-      # Connect to managed session if agent_engine_id is set.
-      app_name = agent_engine_id if agent_engine_id else app_name
-      if (
-          session_service.get_session(
-              app_name=app_name, user_id=user_id, session_id=session_id
+        app_name = app_name
+        if (
+            session_service.get_session(
+                app_name=app_name, user_id=user_id, session_id=session_id
+            )
+            is not None
+        ):
+          logger.warning("Session already exists: %s", session_id)
+          raise HTTPException(
+              status_code=400, detail=f"Session already exists: {session_id}"
           )
-          is not None
-      ):
-        logger.warning("Session already exists: %s", session_id)
-        raise HTTPException(
-            status_code=400, detail=f"Session already exists: {session_id}"
-        )
 
-      logger.info("New session created: %s", session_id)
-      return session_service.create_session(
-          app_name=app_name, user_id=user_id, state=state, session_id=session_id
-      )
+        logger.info("New session created: %s", session_id)
+        return session_service.create_session(
+            app_name=app_name, user_id=user_id, state=state, session_id=session_id
+        )
 
     @app.post(
         "/apps/{app_name}/users/{user_id}/sessions",
@@ -257,9 +233,6 @@ def get_fast_api_app(
         user_id: str,
         state: Optional[dict[str, Any]] = None,
     ) -> Session:
-      # Connect to managed session if agent_engine_id is set.
-      app_name = agent_engine_id if agent_engine_id else app_name
-
       logger.info("New session created")
       return session_service.create_session(
           app_name=app_name, user_id=user_id, state=state
@@ -267,8 +240,6 @@ def get_fast_api_app(
 
     @app.delete("/apps/{app_name}/users/{user_id}/sessions/{session_id}")
     def delete_session(app_name: str, user_id: str, session_id: str):
-      # Connect to managed session if agent_engine_id is set.
-      app_name = agent_engine_id if agent_engine_id else app_name
       session_service.delete_session(
           app_name=app_name, user_id=user_id, session_id=session_id
       )
@@ -284,17 +255,16 @@ def get_fast_api_app(
         artifact_name: str,
         version: Optional[int] = Query(None),
     ) -> Optional[types.Part]:
-      app_name = agent_engine_id if agent_engine_id else app_name
-      artifact = await artifact_service.load_artifact(
-          app_name=app_name,
-          user_id=user_id,
-          session_id=session_id,
-          filename=artifact_name,
-          version=version,
-      )
-      if not artifact:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-      return artifact
+        artifact = await artifact_service.load_artifact(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id,
+            filename=artifact_name,
+            version=version,
+        )
+        if not artifact:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        return artifact
 
     @app.get(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}/versions/{version_id}",
@@ -307,17 +277,16 @@ def get_fast_api_app(
         artifact_name: str,
         version_id: int,
     ) -> Optional[types.Part]:
-      app_name = agent_engine_id if agent_engine_id else app_name
-      artifact = await artifact_service.load_artifact(
-          app_name=app_name,
-          user_id=user_id,
-          session_id=session_id,
-          filename=artifact_name,
-          version=version_id,
-      )
-      if not artifact:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-      return artifact
+        artifact = await artifact_service.load_artifact(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id,
+            filename=artifact_name,
+            version=version_id,
+        )
+        if not artifact:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        return artifact
 
     @app.get(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts",
@@ -326,7 +295,6 @@ def get_fast_api_app(
     async def list_artifact_names(
         app_name: str, user_id: str, session_id: str
     ) -> list[str]:
-      app_name = agent_engine_id if agent_engine_id else app_name
       return await artifact_service.list_artifact_keys(
           app_name=app_name, user_id=user_id, session_id=session_id
       )
@@ -338,13 +306,12 @@ def get_fast_api_app(
     async def list_artifact_versions(
         app_name: str, user_id: str, session_id: str, artifact_name: str
     ) -> list[int]:
-      app_name = agent_engine_id if agent_engine_id else app_name
-      return await artifact_service.list_versions(
-          app_name=app_name,
-          user_id=user_id,
-          session_id=session_id,
-          filename=artifact_name,
-      )
+        return await artifact_service.list_versions(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id,
+            filename=artifact_name,
+        )
 
     @app.delete(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}",
@@ -352,71 +319,67 @@ def get_fast_api_app(
     async def delete_artifact(
         app_name: str, user_id: str, session_id: str, artifact_name: str
     ):
-      app_name = agent_engine_id if agent_engine_id else app_name
-      await artifact_service.delete_artifact(
-          app_name=app_name,
-          user_id=user_id,
-          session_id=session_id,
-          filename=artifact_name,
-      )
+        await artifact_service.delete_artifact(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id,
+            filename=artifact_name,
+        )
 
     @app.post("/run", response_model_exclude_none=True)
     async def agent_run(req: AgentRunRequest) -> list[Event]:
-      # Connect to managed session if agent_engine_id is set.
-      app_id = agent_engine_id if agent_engine_id else req.app_name
-      session = session_service.get_session(
-          app_name=app_id, user_id=req.user_id, session_id=req.session_id
-      )
-      if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
-      runner = await _get_runner_async(req.app_name)
-      events = [
-          event
-          async for event in runner.run_async(
-              user_id=req.user_id,
-              session_id=req.session_id,
-              new_message=req.new_message,
-          )
-      ]
-      logger.info("Generated %s events in agent run: %s", len(events), events)
-      return events
+        session = session_service.get_session(
+            app_name=req.app_name, user_id=req.user_id, session_id=req.session_id
+        )
+        if not session:
+          raise HTTPException(status_code=404, detail="Session not found")
+        runner = await _get_runner_async(req.app_name)
+        events = [
+            event
+            async for event in runner.run_async(
+                user_id=req.user_id,
+                session_id=req.session_id,
+                new_message=req.new_message,
+            )
+        ]
+        logger.info("Generated %s events in agent run: %s", len(events), events)
+        return events
 
     @app.post("/run_sse")
     async def agent_run_sse(req: AgentRunRequest) -> StreamingResponse:
-      # Connect to managed session if agent_engine_id is set.
-      app_id = agent_engine_id if agent_engine_id else req.app_name
-      # SSE endpoint
-      session = session_service.get_session(
-          app_name=app_id, user_id=req.user_id, session_id=req.session_id
-      )
-      if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        # SSE endpoint
+        session = session_service.get_session(
+            app_name=req.app_name, user_id=req.user_id, session_id=req.session_id
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
 
-      # Convert the events to properly formatted SSE
-      async def event_generator():
-        try:
-          stream_mode = StreamingMode.SSE if req.streaming else StreamingMode.NONE
-          runner = await _get_runner_async(req.app_name)
-          async for event in runner.run_async(
-              user_id=req.user_id,
-              session_id=req.session_id,
-              new_message=req.new_message,
-              run_config=RunConfig(streaming_mode=stream_mode),
-          ):
-            # Format as SSE data
-            sse_event = event.model_dump_json(exclude_none=True, by_alias=True)
-            logger.info("Generated event in agent run streaming: %s", sse_event)
-            yield f"data: {sse_event}\n\n"
-        except Exception as e:
-          logger.exception("Error in event_generator: %s", e)
-          # You might want to yield an error event here
-          yield f'data: {{"error": "{str(e)}"}}\n\n'
+        # Convert the events to properly formatted SSE
+        async def event_generator():
+            try:
+                stream_mode = (StreamingMode.SSE if req.streaming
+                               else StreamingMode.NONE)
+                runner = await _get_runner_async(req.app_name)
+                async for event in runner.run_async(
+                    user_id=req.user_id,
+                    session_id=req.session_id,
+                    new_message=req.new_message,
+                    run_config=RunConfig(streaming_mode=stream_mode),
+                ):
+                    # Format as SSE data
+                    sse_event = event.model_dump_json(exclude_none=True, by_alias=True)
+                    logger.info("Generated event in agent run streaming: %s", sse_event)
+                    yield f"data: {sse_event}\n\n"
+            except Exception as e:
+                logger.exception("Error in event_generator: %s", e)
+                # You might want to yield an error event here
+                yield f'data: {{"error": "{str(e)}"}}\n\n'
 
-      # Returns a streaming response with the proper media type for SSE
-      return StreamingResponse(
-          event_generator(),
-          media_type="text/event-stream",
-      )
+        # Returns a streaming response with the proper media type for SSE
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+        )
 
 
     @app.websocket("/run_live")
@@ -430,17 +393,14 @@ def get_fast_api_app(
         ),  # Only allows "TEXT" or "AUDIO"
     ) -> None:
       await websocket.accept()
-
-      # Connect to managed session if agent_engine_id is set.
-      app_id = agent_engine_id if agent_engine_id else app_name
       session = session_service.get_session(
-          app_name=app_id, user_id=user_id, session_id=session_id
+          app_name=app_name, user_id=user_id, session_id=session_id
       )
       if not session:
-        # Accept first so that the client is aware of connection establishment,
-        # then close with a specific code.
-        await websocket.close(code=1002, reason="Session not found")
-        return
+          # Accept first so that the client is aware of connection establishment,
+          # then close with a specific code.
+          await websocket.close(code=1002, reason="Session not found")
+          return
 
       live_request_queue = LiveRequestQueue()
 
@@ -454,13 +414,13 @@ def get_fast_api_app(
           )
 
       async def process_messages():
-        try:
-          while True:
-            data = await websocket.receive_text()
-            # Validate and send the received message to the live queue.
-            live_request_queue.send(LiveRequest.model_validate_json(data))
-        except ValidationError as ve:
-          logger.error("Validation error in process_messages: %s", ve)
+          try:
+              while True:
+                  data = await websocket.receive_text()
+                  # Validate and send the received message to the live queue.
+                  live_request_queue.send(LiveRequest.model_validate_json(data))
+          except ValidationError as ve:
+              logger.error("Validation error in process_messages: %s", ve)
 
       # Run both tasks concurrently and cancel all if one fails.
       tasks = [
@@ -471,59 +431,62 @@ def get_fast_api_app(
           tasks, return_when=asyncio.FIRST_EXCEPTION
       )
       try:
-        # This will re-raise any exception from the completed tasks.
-        for task in done:
-          task.result()
+          # This will re-raise any exception from the completed tasks.
+          for task in done:
+              task.result()
       except WebSocketDisconnect:
-        logger.info("Client disconnected during process_messages.")
+          logger.info("Client disconnected during process_messages.")
       except Exception as e:
-        logger.exception("Error during live websocket communication: %s", e)
-        traceback.print_exc()
-        WEBSOCKET_INTERNAL_ERROR_CODE = 1011
-        WEBSOCKET_MAX_BYTES_FOR_REASON = 123
-        await websocket.close(
-            code=WEBSOCKET_INTERNAL_ERROR_CODE,
-            reason=str(e)[:WEBSOCKET_MAX_BYTES_FOR_REASON],
-        )
+          logger.exception("Error during live websocket communication: %s", e)
+          traceback.print_exc()
+          WEBSOCKET_INTERNAL_ERROR_CODE = 1011
+          WEBSOCKET_MAX_BYTES_FOR_REASON = 123
+          await websocket.close(
+              code=WEBSOCKET_INTERNAL_ERROR_CODE,
+              reason=str(e)[:WEBSOCKET_MAX_BYTES_FOR_REASON],
+          )
       finally:
-        for task in pending:
-          task.cancel()
+          for task in pending:
+              task.cancel()
 
     async def _get_root_agent_async(app_name: str) -> Agent:
-      """Returns the root agent for the given app."""
-      if app_name in root_agent_dict:
-        return root_agent_dict[app_name]
-      agent_module = importlib.import_module(app_name)
-      if getattr(agent_module.agent, "root_agent"):
-        root_agent = agent_module.agent.root_agent
-      else:
-        raise ValueError(f'Unable to find "root_agent" from {app_name}.')
+        """Returns the root agent for the given app."""
+        if app_name in root_agent_dict:
+            return root_agent_dict[app_name]
+        agent_module_name = str(
+            Path(agent_dir).relative_to(os.getcwd())
+        ).replace("/", ".")
+        agent_module = importlib.import_module(agent_module_name)
+        if getattr(agent_module.agent, "root_agent"):
+            root_agent = agent_module.agent.root_agent
+        else:
+            raise ValueError(f'Unable to find "root_agent" from {app_name}.')
 
-      # Handle an awaitable root agent and await for the actual agent.
-      if inspect.isawaitable(root_agent):
-        try:
-          agent, exit_stack = await root_agent
-          exit_stacks.append(exit_stack)
-          root_agent = agent
-        except Exception as e:
-          raise RuntimeError(f"error getting root agent, {e}") from e
+        # Handle an awaitable root agent and await for the actual agent.
+        if inspect.isawaitable(root_agent):
+            try:
+                agent, exit_stack = await root_agent
+                exit_stacks.append(exit_stack)
+                root_agent = agent
+            except Exception as e:
+                raise RuntimeError(f"error getting root agent, {e}") from e
 
-      root_agent_dict[app_name] = root_agent
-      return root_agent
+        root_agent_dict[app_name] = root_agent
+        return root_agent
 
     async def _get_runner_async(app_name: str) -> Runner:
-      """Returns the runner for the given app."""
-      if app_name in runner_dict:
-        return runner_dict[app_name]
-      root_agent = await _get_root_agent_async(app_name)
-      runner = Runner(
-          app_name=agent_engine_id if agent_engine_id else app_name,
-          agent=root_agent,
-          artifact_service=artifact_service,
-          session_service=session_service,
-          memory_service=memory_service,
-      )
-      runner_dict[app_name] = runner
-      return runner
+        """Returns the runner for the given app."""
+        if app_name in runner_dict:
+            return runner_dict[app_name]
+        root_agent = await _get_root_agent_async(app_name)
+        runner = Runner(
+            app_name=app_name,
+            agent=root_agent,
+            artifact_service=artifact_service,
+            session_service=session_service,
+            memory_service=memory_service,
+        )
+        runner_dict[app_name] = runner
+        return runner
 
     return app

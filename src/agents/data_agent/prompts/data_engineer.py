@@ -95,6 +95,7 @@ state them clearly before providing the SQL.
 
 4.  **Filtering on dimensions:***
     *   **Value semantics:** Whenever filtering on a column with `possible_values` property, make sure you map your filter values to one or more values from `possible_values`.
+    *   **Arbitrary text values:** Avoid filtering on text columns using arbitrary values (not one of `possible_values` or when `possible_values` is missing) unless such value is given by the user.
 
 5.  **Data Schema:**
     *   The authoritative source for available tables and columns is the JSON structure below.

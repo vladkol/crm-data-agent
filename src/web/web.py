@@ -30,16 +30,17 @@ from google.genai.types import Content, Part
 from google.adk.events import Event, EventActions
 from google.adk.sessions import Session
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
-from shared.firestore_session_store import (FirestoreSessionService
+from shared.firestore_session_service import (FirestoreSessionService
                                             as SessionService)
 
 from PIL import Image
 
 from google.adk.artifacts import GcsArtifactService
-from agent_runtime_client import AgentEngineRuntime, FastAPIEngineRuntime
+from agent_runtime_client import FastAPIEngineRuntime
 
 MAX_RUN_RETRIES = 10
 DEFAULT_USER_ID = "user@ai"
+DEFAULT_AGENT_NAME = "default-agent"
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -55,9 +56,10 @@ st.markdown("[github.com/vladkol/crm-data-agent]"
             "(https://github.com/vladkol/crm-data-agent)")
 st.markdown("#### Examples of questions:")
 st.markdown("""
-* 🔝 Top 5 customers in every country.
-* 📢 What are our best lead sources?
 * 📈 Lead conversion trends in the US.
+* 📢 What are our best lead sources?
+* 🔝 Top 5 customers in every country.
+* 👩🏼‍💼 How did our support team perform in 2022?
 """.strip())
 
 hide_streamlit_style = """
@@ -248,13 +250,9 @@ def _get_user_id() -> str:
 def _initialize_configuration():
     if "adk_configured" in st.session_state:
         return st.session_state.adk_configured
-    agent_engine_id = os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"]
+    agent_app_name = os.getenv("GOOGLE_CLOUD_AGENT_ENGINE_ID",
+                                os.getenv("AGENT_NAME", DEFAULT_AGENT_NAME))
     vertex_ai_bucket = os.environ["AI_STORAGE_BUCKET"]
-
-    # session_service = VertexAiSessionService(
-    #     project=os.environ["GOOGLE_CLOUD_PROJECT"],
-    #     location=os.environ["GOOGLE_CLOUD_LOCATION"],
-    # )
     session_service = SessionService(
           database=os.environ["FIREBASE_SESSION_DATABASE"],
           sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
@@ -265,7 +263,7 @@ def _initialize_configuration():
     memory_service = InMemoryMemoryService()
     st.session_state.artifact_service = artifact_service
     st.session_state.session_service = session_service
-    st.session_state.app_name = agent_engine_id
+    st.session_state.app_name = agent_app_name
     st.session_state.memory_service = memory_service
     st.session_state.adk_configured = True
 
@@ -340,10 +338,6 @@ async def ask_agent(question: str):
     runtime_name = os.environ["RUNTIME_ENVIRONMENT"].lower()
     if runtime_name == "local":
         runtime = FastAPIEngineRuntime(session)
-    elif runtime_name == "agent_engine":
-        runtime = AgentEngineRuntime(
-            session,
-            os.environ["GOOGLE_CLOUD_AGENT_ENGINE_ID"])
     else:
         ValueError(f"`{runtime_name}` is not a valid runtime name.")
 
@@ -351,7 +345,7 @@ async def ask_agent(question: str):
     st.session_state.session_service.append_event(
         session=st.session_state.adk_session,
         event=Event(
-            author="runtime",
+            author="user",
             actions=EventActions(
                 state_delta={
                     "RUNNING_QUERY": True
@@ -376,7 +370,7 @@ async def ask_agent(question: str):
     st.session_state.session_service.append_event(
         session=st.session_state.adk_session,
         event=Event(
-            author="runtime",
+            author="user",
             actions=EventActions(
                 state_delta={
                     "RUNNING_QUERY": False

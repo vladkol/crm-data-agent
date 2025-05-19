@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Agent Runner App - FastAPI websocket service"""
+"""Agent Runner App - FastAPI service"""
 
 import logging
 import os
@@ -35,7 +35,6 @@ prepare_environment()
 api_app = get_fast_api_app(
     agent_dir=os.environ["AGENT_DIR"],
     trace_to_cloud=False,
-    session_db_url=f"agentengine://{os.environ['GOOGLE_CLOUD_AGENT_ENGINE_ID']}",
     artifact_service=GcsArtifactService(
         bucket_name=os.environ["AI_STORAGE_BUCKET"]
     )

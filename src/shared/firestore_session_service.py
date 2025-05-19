@@ -36,8 +36,6 @@ from google.cloud.firestore import (Client,
 
 logger = logging.getLogger(__name__)
 
-_STATE_PREFIX = "__STATE_::"
-
 class FirestoreSessionService(BaseSessionService):
     def __init__(self,
                  database: str,
@@ -47,13 +45,18 @@ class FirestoreSessionService(BaseSessionService):
         self.client = Client(project_id, database=database)
         self.sessions_collection = sessions_collection
 
+    @staticmethod
+    def _clean_app_name(name: str) -> str:
+        return name.rsplit("/", 1)[-1]
+
+
     def _get_session_path(self,
                           *,
                           app_name: str,
                           user_id: str,
                           session_id: str) -> str:
         return (f"{self.sessions_collection}"
-                f"/agents/{app_name}"
+                f"/agents/{FirestoreSessionService._clean_app_name(app_name)}"
                 f"/users/{user_id}"
                 f"/sessions/{session_id}").strip("/")
 
@@ -63,7 +66,7 @@ class FirestoreSessionService(BaseSessionService):
                          user_id: str,
                          session_id: str) -> DocumentReference:
         sessions_collection = self._get_sessions_collection(
-            app_name=app_name,
+            app_name=FirestoreSessionService._clean_app_name(app_name),
             user_id=user_id
         )
         return sessions_collection.document(session_id)
@@ -74,7 +77,7 @@ class FirestoreSessionService(BaseSessionService):
                          user_id: str,
                          session_id: str) -> CollectionReference:
         return self._get_session_doc(
-            app_name=app_name,
+            app_name=FirestoreSessionService._clean_app_name(app_name),
             user_id=user_id,
             session_id=session_id
         ).collection("events")
@@ -84,11 +87,30 @@ class FirestoreSessionService(BaseSessionService):
                          app_name: str,
                          user_id: str) -> CollectionReference:
         session_parent_path = self._get_session_path(
-            app_name=app_name,
+            app_name=FirestoreSessionService._clean_app_name(app_name),
             user_id=user_id,
             session_id=""
         ).strip("/")
         return self.client.collection(session_parent_path)
+
+    def _delete_collection(
+            self,
+            coll_ref: CollectionReference,
+            batch_size: int = 100,
+    ):
+        if batch_size < 1:
+            batch_size = 1
+
+        docs = coll_ref.list_documents(page_size=batch_size)
+        deleted = 0
+
+        for doc in docs:
+            print(f"Deleting doc {doc.id} => {doc.get().to_dict()}")
+            doc.delete()
+            deleted = deleted + 1
+
+        if deleted >= batch_size:
+            return self._delete_collection(coll_ref, batch_size)
 
 
     def create_session(
@@ -101,6 +123,7 @@ class FirestoreSessionService(BaseSessionService):
     ) -> Session:
         if not session_id:
            session_id = uuid.uuid4().hex
+        app_name = FirestoreSessionService._clean_app_name(app_name)
         logger.info(f"Creating session {app_name}/{user_id}/{session_id}.")
         session = Session(id=session_id,
                           app_name=app_name,
@@ -113,12 +136,8 @@ class FirestoreSessionService(BaseSessionService):
             session_id=session_id
         )
         session_dict = session.model_dump()
-        session_dict.pop("state", None)
         session_dict.pop("events", None)
         session_dict["last_update_time"] = SERVER_TIMESTAMP
-        state_dict = session.state
-        for k,v in state_dict.items():
-            session_dict[f"{_STATE_PREFIX}{k}"] = v
         session.last_update_time = doc.create(
             session_dict
         ).update_time.timestamp() # type: ignore
@@ -133,6 +152,7 @@ class FirestoreSessionService(BaseSessionService):
       config: Optional[GetSessionConfig] = None,
     ) -> Optional[Session]:
         """Gets a session."""
+        app_name = FirestoreSessionService._clean_app_name(app_name)
         logger.info(f"Loading session {app_name}/{user_id}/{session_id}.")
         session_doc = self._get_session_doc(
             app_name=app_name,
@@ -141,23 +161,26 @@ class FirestoreSessionService(BaseSessionService):
         )
         doc_obj = session_doc.get()
         session_dict = doc_obj.to_dict() or {}
+        if not session_dict or "id" not in session_dict:
+            raise FileNotFoundError(
+                f"Session {app_name}/{user_id}/{session_id} not found."
+            )
+        if "state" not in session_dict:
+            session_dict["state"] = {}
         if "last_update_time" in session_dict:
             session_dict["last_update_time"] = session_dict[
                 "last_update_time"
             ].timestamp()
-        state_props = [
-            k
-            for k in session_dict
-            if k.startswith(_STATE_PREFIX)
-        ]
-        session_state = {}
-        for state_prop in state_props:
-            state_key_without_prefix = state_prop[len(_STATE_PREFIX):]
-            session_state[state_key_without_prefix] = session_dict.pop(
-                state_prop, None
-            )
+        # Backwards compatibility
+        if "__STATE_::RUNNING_QUERY" in session_dict["state"]:
+            session_dict["state"]["RUNNING_QUERY"] = session_dict.pop(
+                "__STATE_::RUNNING_QUERY"
+        )
+        session_dict = {
+            k: v for k, v in session_dict.items()
+            if not k.startswith("__STATE_::")
+        }
         session = Session.model_validate(session_dict)
-        session.state = session_state
         session.events = []
         query = None
         events_collection = self._get_events_collection(
@@ -185,6 +208,7 @@ class FirestoreSessionService(BaseSessionService):
       self, *, app_name: str, user_id: str
     ) -> ListSessionsResponse:
         sessions_result = []
+        app_name = FirestoreSessionService._clean_app_name(app_name)
         sessions = self._get_sessions_collection(
             app_name=app_name,
             user_id=user_id,
@@ -203,11 +227,19 @@ class FirestoreSessionService(BaseSessionService):
     def delete_session(
         self, *, app_name: str, user_id: str, session_id: str
     ) -> None:
+        app_name = FirestoreSessionService._clean_app_name(app_name)
         logger.info(f"Deleting session {app_name}/{user_id}/{session_id}.")
         self._get_sessions_collection(
             app_name=app_name,
             user_id=user_id,
         ).document(session_id).delete()
+        self._delete_collection(
+            self._get_events_collection(
+                app_name=app_name,
+                user_id=user_id,
+                session_id=session_id
+            )
+        )
 
     def list_events(
         self,
@@ -217,6 +249,7 @@ class FirestoreSessionService(BaseSessionService):
         session_id: str,
     ) -> ListEventsResponse:
         """Lists events in a session."""
+        app_name = FirestoreSessionService._clean_app_name(app_name)
         events_result = []
         collection = self._get_events_collection(
             app_name=app_name,
@@ -254,14 +287,14 @@ class FirestoreSessionService(BaseSessionService):
         if not session.state:
             session.state = {}
         updated = False
-        state_dict = {}
-        state_object_dict = {}
+        state_change_dict = {}
         for key, value in event.actions.state_delta.items():
             if key.startswith(State.TEMP_PREFIX):
                 continue
-            state_dict[f"{_STATE_PREFIX}{key}"] = value
-            state_object_dict[key] = value
+            state_change_dict[f"state.{key}"] = value
+            session.state[key] = value
             updated = True
+        state_change_dict["last_update_time"] = SERVER_TIMESTAMP
         while updated: # Writing to Firestore only if updated
             try:
                 session_doc = self._get_session_doc(
@@ -269,11 +302,9 @@ class FirestoreSessionService(BaseSessionService):
                     user_id=session.user_id,
                     session_id=session.id
                 )
-                state_dict["last_update_time"] = SERVER_TIMESTAMP
                 session.last_update_time = session_doc.update(
-                    state_dict
+                    field_updates=state_change_dict
                 ).update_time.timestamp() # type: ignore
-                session.state.update(state_object_dict)
                 break
             except exceptions.FailedPrecondition:
                 pass

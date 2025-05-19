@@ -1,3 +1,18 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Agent Runtime Client"""
+
 from abc import ABC, abstractmethod
 import json
 import logging
@@ -10,11 +25,7 @@ from google.adk.events import Event
 from google.adk.sessions import Session
 from google.genai.types import Content, Part
 
-import vertexai
-
 from pydantic import ValidationError
-
-import vertexai.agent_engines
 
 
 MAX_RUN_RETRIES = 10
@@ -33,42 +44,6 @@ class AgentRuntime(ABC):
     def is_streaming(self) -> bool:
         pass
 
-
-class AgentEngineRuntime(AgentRuntime):
-    def __init__(self, session: Session, agent_engine_id: str):
-        super().__init__(session)
-        self.agent_engine_id = agent_engine_id
-        self.streaming = False
-
-    @override
-    async def stream_query(self, message: str) -> AsyncGenerator[Event, None]:
-        self.streaming = True
-        try:
-            agent_engine = vertexai.agent_engines.get(self.agent_engine_id)
-            for event in agent_engine.stream_query( # type: ignore
-                user_id=self.session.user_id,
-                session_id=self.session.id,
-                message=message,
-            ):
-                if not event:
-                    continue
-                if isinstance(event, Event):
-                    yield event
-                elif isinstance(event, dict):
-                    if not "author" in event:
-                        raise ValueError(f"Unrecognized event format. Data: {event}")
-                    else:
-                        yield Event.model_validate(event)
-                elif isinstance(event, str):
-                    yield Event.model_validate_json(event)
-                else:
-                    raise ValueError(f"Unknown event type: {type(event)}. Data:\n{event}\n")
-        finally:
-            self.streaming = False
-
-    @override
-    def is_streaming(self) -> bool:
-        return self.streaming
 
 async def sse_client(url, request, headers):
     """
@@ -138,16 +113,20 @@ class FastAPIEngineRuntime(AgentRuntime):
 
 
     @override
-    async def stream_query(self, message: Union[str, Content]) -> AsyncGenerator[Event, None]:
+    async def stream_query(
+        self,
+        message: Union[str, Content]
+    ) -> AsyncGenerator[Event, None]:
         self.streaming = True
         try:
             if not message:
                 content = None
             if message and isinstance(message, str):
-                content = Content(parts=[
-                                    Part.from_text(text=message)
-                                ],
-                                role="user"
+                content = Content(
+                    parts=[
+                        Part.from_text(text=message)
+                    ],
+                    role="user"
                 )
             else:
                 content = message
@@ -156,7 +135,7 @@ class FastAPIEngineRuntime(AgentRuntime):
             else:
                 content_dict = None
             request = {
-                "app_name": "agents.data_agent",
+                "app_name": self.session.app_name,
                 "user_id": self.session.user_id,
                 "session_id": self.session.id,
                 "new_message": content_dict,

@@ -15,9 +15,5 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 pushd "${SCRIPT_DIR}/src" &> /dev/null || exit
-if [[ "$1" == "agent_engine" ]]; then
-    python3 web/main.py "agents/data_agent" "agent_engine"
-else
-    uvicorn --app-dir web fast_api_runner:api_app --port 8000 & python3 web/main.py "agents/data_agent" "local" & wait
-fi
+uvicorn --app-dir web fast_api_runner:api_app --port 8000 & python3 web/main.py "agents/data_agent" "local" & wait
 popd &> /dev/null || exit

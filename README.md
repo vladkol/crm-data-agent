@@ -113,21 +113,13 @@ gcloud services enable \
     aiplatform.googleapis.com \
     cloudbuild.googleapis.com \
     run.googleapis.com \
+    firestore.googleapis.com \
+    bigquery.googleapis.com \
+
     --project=[GOOGLE_CLOUD_PROJECT]
 ```
 
 > Replace `[GOOGLE_CLOUD_PROJECT]` with GOOGLE_CLOUD_PROJECT value you put in `src/.env` file.
-
-### Create Vertex AI Agent Engine Instance
-
-To be able to use Vertex AI agent services and store session data,
-the agent should be registered in [Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine).
-
-* Run `utils/get_agent_engine.py` script.
-
-It will register an empty agent with name identified by `AGENT_NAME` environment variable.
-
-> The script will modify `src/.env` file by adding `GOOGLE_CLOUD_AGENT_ENGINE_ID` variable.
 
 ### Deploy Salesforce Data
 
