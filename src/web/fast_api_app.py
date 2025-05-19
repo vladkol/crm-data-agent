@@ -161,8 +161,8 @@ def get_fast_api_app(
 
     # Build the Session service
     session_service = SessionService(
-        database=os.environ["FIREBASE_SESSION_DATABASE"],
-        sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
+        database=os.environ["FIRESTORE_SESSION_DATABASE"],
+        sessions_collection=os.getenv("FIRESTORE_SESSION_COLLECTION", "/")
     )
 
 

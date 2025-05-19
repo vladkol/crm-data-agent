@@ -28,7 +28,7 @@ _env_requirements = {
     "BQ_PROJECT_ID": "$GOOGLE_CLOUD_PROJECT",
     "SFDC_DATA_PROJECT_ID": "$BQ_PROJECT_ID",
     "SFDC_BQ_DATASET": None,
-    "FIREBASE_SESSION_DATABASE": None,
+    "FIRESTORE_SESSION_DATABASE": None,
     "BQ_LOCATION": "US",
     "SFDC_METADATA_FILE": "sfdc_metadata.json", # default value
     "AI_STORAGE_BUCKET": None,
@@ -54,6 +54,13 @@ def get_env_values() -> dict:
     for v in values:
         if v in os.environ:
             values[v] = os.environ[v]
+    if (
+        "FIREBASE_SESSION_DATABASE" in values
+        and "FIRESTORE_SESSION_DATABASE" not in values
+    ):
+        values["FIRESTORE_SESSION_DATABASE"] = values[
+            "FIREBASE_SESSION_DATABASE"
+        ]
     return values
 
 
@@ -66,7 +73,13 @@ def prepare_environment():
         logging.warning(".env file not found.")
     else:
         load_dotenv(dotenv_path=_get_dotenv_file(), override=True)
-
+    if (
+        "FIREBASE_SESSION_DATABASE" in os.environ
+        and "FIRESTORE_SESSION_DATABASE" not in os.environ
+    ):
+        os.environ["FIRESTORE_SESSION_DATABASE"] = os.environ[
+            "FIREBASE_SESSION_DATABASE"
+        ]
     for name, val in _env_requirements.items():
         if name in os.environ and len(os.environ[name].strip()) > 0:
             continue

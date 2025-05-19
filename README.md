@@ -87,7 +87,7 @@ Please create one.
 
 `SFDC_BQ_DATASET` - [REQUIRED] Name of the Salesforce dataset (in project *SFDC_DATA_PROJECT_ID*).
 
-`FIREBASE_SESSION_DATABASE` - [REQUIRED] Name of a Firebase database. Please create one. ADK will store its session data here.
+`FIRESTORE_SESSION_DATABASE` - [REQUIRED] Name of a Firestore database. Please create one. ADK will store its session data here.
 
 `BQ_PROJECT_ID` - *[OPTIONAL]* Project Id of a Google Cloud Project that will be used for running BigQuery query jobs. If not defined, `GOOGLE_CLOUD_PROJECT` value will be used.
 

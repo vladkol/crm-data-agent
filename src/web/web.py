@@ -254,8 +254,8 @@ def _initialize_configuration():
                                 os.getenv("AGENT_NAME", DEFAULT_AGENT_NAME))
     vertex_ai_bucket = os.environ["AI_STORAGE_BUCKET"]
     session_service = SessionService(
-          database=os.environ["FIREBASE_SESSION_DATABASE"],
-          sessions_collection=os.getenv("FIREBASE_SESSION_COLLECTION", "/")
+          database=os.environ["FIRESTORE_SESSION_DATABASE"],
+          sessions_collection=os.getenv("FIRESTORE_SESSION_COLLECTION", "/")
     )
     artifact_service = GcsArtifactService(
         bucket_name=vertex_ai_bucket
