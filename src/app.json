@@ -34,9 +34,6 @@
         "port": 8080,
         "http2": false
     },
-    "build": {
-        "skip": true
-    },
     "hooks": {
         "prebuild": {
             "commands": [
@@ -54,7 +51,6 @@
                 "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "pip install -q -U google-cloud-bigquery google-cloud-bigquery-storage",
                 "git clone --depth 1 --no-tags https://github.com/vladkol/sfdc-kittycorn ./data || true",
-                "docker build -t ${IMAGE_URL} .",
                 "python3 ./data/deploy_to_my_project.py --project ${GOOGLE_CLOUD_PROJECT} --dataset {SFDC_BQ_DATASET} --location ${BQ_LOCATION} || true"
             ]
         }
