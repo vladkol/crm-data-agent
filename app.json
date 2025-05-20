@@ -1,0 +1,57 @@
+{
+    "name": "crm-data-agent",
+    "env": {
+        "TITLE": {
+            "description": "CRM Data Agent"
+        },
+        "AGENT_NAME": {
+            "description": "Agent Service Name",
+            "value":"crm-data-agent"
+        },
+        "FIRESTORE_SESSION_DATABASE": {
+            "description": "Name of Firestore Database for storing session data",
+            "order": 100,
+            "value": "agent-sessions"
+        },
+        "AI_STORAGE_BUCKET_PREFIX": {
+            "description": "Prefix of Cloud Storage bucket for Artifact data (project id will be added)",
+            "order": 101,
+            "value": "crm-data-agent-artifacts"
+        },
+        "SFDC_BQ_DATASET":{
+            "description": "Name of BigQuery dataset where Salesforce demo data will be stored.",
+            "order": 102,
+            "value": "sfdc_data"
+        },
+        "BQ_LOCATION":{
+            "description": "BigQuery location",
+            "order": 103,
+            "value": "US"
+        }
+    },
+    "options": {
+        "allow-unauthenticated": true,
+        "memory": "32Gi",
+        "cpu": "8",
+        "port": 8080,
+        "http2": false
+    },
+    "build": {
+        "skip": true
+    },
+    "hooks": {
+        "prebuild": {
+            "commands": [
+                "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
+                "gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION} || true",
+                "gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION} || true"
+            ]
+        },
+        "postbuild": {
+            "commands": [
+                "pip install -U -r src/requirements.txt",
+                "export GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" && export GOOGLE_GENAI_USE_VERTEXAI=1 && export AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" && python3 utils/deploy_to_cloud_run.py \"${K_SERVICE}\""
+            ]
+        }
+    }
+}
