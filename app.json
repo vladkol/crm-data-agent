@@ -51,8 +51,9 @@
                 "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
                 "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
-                "pip install -q -U python-dotenv google-cloud-bigquery google-cloud-bigquery-storage",
-                "python3 utils/deploy_demo_data.py",
+                "pip install -q -U google-cloud-bigquery google-cloud-bigquery-storage",
+                "git clone --depth 1  --no-tags https://github.com/vladkol/sfdc-kittycorn ./data && rm -rf ./data/.git",
+                "python3 ./data/deploy_to_my_project.py --project ${GOOGLE_CLOUD_PROJECT} --dataset {SFDC_BQ_DATASET} --location ${BQ_LOCATION}",
                 "gcloud builds submit ./src --project=${GOOGLE_CLOUD_PROJECT} --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
             ]
         }
