@@ -1,5 +1,4 @@
 {
-    "name": "crm-data-agent",
     "env": {
         "AGENT_NAME": {
             "description": "Agent Service Name",
@@ -38,7 +37,7 @@
         "skip": true
     },
     "hooks": {
-        "prebuild": {
+        "postbuild": {
             "commands": [
                 "gcloud config set project ${GOOGLE_CLOUD_PROJECT} -q",
                 "echo GOOGLE_CLOUD_PROJECT=\"${GOOGLE_CLOUD_PROJECT}\" >>  src/.env",
