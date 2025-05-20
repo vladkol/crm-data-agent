@@ -35,26 +35,25 @@
         "http2": false
     },
     "build": {
-        "skip": true
+        "skip": false
     },
     "hooks": {
         "prebuild": {
             "commands": [
                 "gcloud config set project ${GOOGLE_CLOUD_PROJECT} -q",
-                "echo AGENT_NAME=\"${AGENT_NAME}\" >>  src/.env",
-                "echo FIRESTORE_SESSION_DATABASE=\"${FIRESTORE_SESSION_DATABASE}\" >>  src/.env",
-                "echo AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" >>  src/.env",
-                "echo BQ_LOCATION=\"${BQ_LOCATION}\" >>  src/.env",
-                "echo SFDC_BQ_DATASET=\"${SFDC_BQ_DATASET}\" >>  src/.env",
-                "echo GOOGLE_GENAI_USE_VERTEXAI=1 >>  src/.env",
-                "echo GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" >>  src/.env",
+                "echo AGENT_NAME=\"${AGENT_NAME}\" >>  .env",
+                "echo FIRESTORE_SESSION_DATABASE=\"${FIRESTORE_SESSION_DATABASE}\" >>  .env",
+                "echo AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" >>  .env",
+                "echo BQ_LOCATION=\"${BQ_LOCATION}\" >>  .env",
+                "echo SFDC_BQ_DATASET=\"${SFDC_BQ_DATASET}\" >>  .env",
+                "echo GOOGLE_GENAI_USE_VERTEXAI=1 >>  .env",
+                "echo GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" >>  .env",
                 "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
                 "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "pip install -q -U google-cloud-bigquery google-cloud-bigquery-storage",
-                "git clone --depth 1  --no-tags https://github.com/vladkol/sfdc-kittycorn ./data",
-                "python3 ./data/deploy_to_my_project.py --project ${GOOGLE_CLOUD_PROJECT} --dataset {SFDC_BQ_DATASET} --location ${BQ_LOCATION}",
-                "gcloud builds submit ./src --project=${GOOGLE_CLOUD_PROJECT} --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
+                "git clone --depth 1 --no-tags https://github.com/vladkol/sfdc-kittycorn ./data || true",
+                "python3 ./data/deploy_to_my_project.py --project ${GOOGLE_CLOUD_PROJECT} --dataset {SFDC_BQ_DATASET} --location ${BQ_LOCATION}"
             ]
         }
     }
