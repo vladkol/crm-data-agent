@@ -1,31 +1,29 @@
 {
     "name": "crm-data-agent",
     "env": {
-        "TITLE": {
-            "description": "CRM Data Agent"
-        },
         "AGENT_NAME": {
             "description": "Agent Service Name",
+            "order": 100,
             "value":"crm-data-agent"
         },
         "FIRESTORE_SESSION_DATABASE": {
             "description": "Name of Firestore Database for storing session data",
-            "order": 100,
+            "order": 101,
             "value": "agent-sessions"
         },
         "AI_STORAGE_BUCKET_PREFIX": {
             "description": "Prefix of Cloud Storage bucket for Artifact data (project id will be added)",
-            "order": 101,
+            "order": 102,
             "value": "crm-data-agent-artifacts"
         },
         "SFDC_BQ_DATASET":{
             "description": "Name of BigQuery dataset where Salesforce demo data will be stored.",
-            "order": 102,
+            "order": 103,
             "value": "sfdc_data"
         },
         "BQ_LOCATION":{
             "description": "BigQuery location",
-            "order": 103,
+            "order": 104,
             "value": "US"
         }
     },
@@ -42,15 +40,17 @@
     "hooks": {
         "prebuild": {
             "commands": [
+                "echo AGENT_NAME=\"${AGENT_NAME}\" >>  src/.env",
+                "echo FIRESTORE_SESSION_DATABASE=\"${FIRESTORE_SESSION_DATABASE}\" >>  src/.env",
+                "echo AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" >>  src/.env",
+                "echo BQ_LOCATION=\"${BQ_LOCATION}\" >>  src/.env",
+                "echo SFDC_BQ_DATASET=\"${SFDC_BQ_DATASET}\" >>  src/.env",
+                "echo GOOGLE_GENAI_USE_VERTEXAI=1 >>  src/.env",
+                "echo GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" >>  src/.env",
                 "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
                 "gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION} || true",
-                "gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION} || true"
-            ]
-        },
-        "postbuild": {
-            "commands": [
-                "pip install -U -r src/requirements.txt",
-                "export GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" && export GOOGLE_GENAI_USE_VERTEXAI=1 && export AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" && python3 utils/deploy_to_cloud_run.py \"${K_SERVICE}\""
+                "gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION} || true",
+                "gcloud build submit ./src --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
             ]
         }
     }
