@@ -52,7 +52,8 @@
                 "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "pip install -q -U google-cloud-bigquery google-cloud-bigquery-storage",
-                "git clone --depth 1 --no-tags https://github.com/vladkol/sfdc-kittycorn ./data",
+                "echo $(pwd)",
+                "git clone --depth 1 --no-tags https://github.com/vladkol/sfdc-kittycorn ./data || true",
                 "echo $(pwd)",
                 "python3 ./data/deploy_to_my_project.py --project ${GOOGLE_CLOUD_PROJECT} --dataset ${SFDC_BQ_DATASET} --location ${BQ_LOCATION}",
                 "docker build -t ${IMAGE_URL} ./src"
