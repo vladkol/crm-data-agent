@@ -50,6 +50,13 @@ The sample also demonstrates:
 
 ## 🚀 Deploy and Run
 
+To deploy the sample with demo data to a publicly available Cloud Run service,
+use `Run on Google Cloud` button below.
+
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/vladkol/crm-data-agent)
+
+### Manual deployment
+
 * Clone this repository:
 
 ```bash
