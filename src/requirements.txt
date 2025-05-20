@@ -1,4 +1,4 @@
-google-adk==0.5.*
+google-adk==1.0.*
 streamlit
 tabulate
 platformdirs

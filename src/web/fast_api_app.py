@@ -177,8 +177,8 @@ def get_fast_api_app(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}",
         response_model_exclude_none=True,
     )
-    def get_session(app_name: str, user_id: str, session_id: str) -> Session:
-      session = session_service.get_session(
+    async def get_session(app_name: str, user_id: str, session_id: str) -> Session:
+      session = await session_service.get_session(
           app_name=app_name, user_id=user_id, session_id=session_id
       )
       if not session:
@@ -189,19 +189,19 @@ def get_fast_api_app(
         "/apps/{app_name}/users/{user_id}/sessions",
         response_model_exclude_none=True,
     )
-    def list_sessions(app_name: str, user_id: str) -> list[Session]:
+    async def list_sessions(app_name: str, user_id: str) -> list[Session]:
         return [
             session
-            for session in session_service.list_sessions(
+            for session in (await session_service.list_sessions(
                 app_name=app_name, user_id=user_id
-            ).sessions
+            )).sessions
         ]
 
     @app.post(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}",
         response_model_exclude_none=True,
     )
-    def create_session_with_id(
+    async def create_session_with_id(
         app_name: str,
         user_id: str,
         session_id: str,
@@ -209,7 +209,7 @@ def get_fast_api_app(
     ) -> Session:
         app_name = app_name
         if (
-            session_service.get_session(
+            await session_service.get_session(
                 app_name=app_name, user_id=user_id, session_id=session_id
             )
             is not None
@@ -220,7 +220,7 @@ def get_fast_api_app(
           )
 
         logger.info("New session created: %s", session_id)
-        return session_service.create_session(
+        return await session_service.create_session(
             app_name=app_name, user_id=user_id, state=state, session_id=session_id
         )
 
@@ -228,21 +228,21 @@ def get_fast_api_app(
         "/apps/{app_name}/users/{user_id}/sessions",
         response_model_exclude_none=True,
     )
-    def create_session(
+    async def create_session(
         app_name: str,
         user_id: str,
         state: Optional[dict[str, Any]] = None,
     ) -> Session:
       logger.info("New session created")
-      return session_service.create_session(
+      return await session_service.create_session(
           app_name=app_name, user_id=user_id, state=state
       )
 
     @app.delete("/apps/{app_name}/users/{user_id}/sessions/{session_id}")
-    def delete_session(app_name: str, user_id: str, session_id: str):
-      session_service.delete_session(
-          app_name=app_name, user_id=user_id, session_id=session_id
-      )
+    async def delete_session(app_name: str, user_id: str, session_id: str):
+        await session_service.delete_session(
+            app_name=app_name, user_id=user_id, session_id=session_id
+        )
 
     @app.get(
         "/apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}",
@@ -328,7 +328,7 @@ def get_fast_api_app(
 
     @app.post("/run", response_model_exclude_none=True)
     async def agent_run(req: AgentRunRequest) -> list[Event]:
-        session = session_service.get_session(
+        session = await session_service.get_session(
             app_name=req.app_name, user_id=req.user_id, session_id=req.session_id
         )
         if not session:
@@ -348,7 +348,7 @@ def get_fast_api_app(
     @app.post("/run_sse")
     async def agent_run_sse(req: AgentRunRequest) -> StreamingResponse:
         # SSE endpoint
-        session = session_service.get_session(
+        session = await session_service.get_session(
             app_name=req.app_name, user_id=req.user_id, session_id=req.session_id
         )
         if not session:
@@ -393,7 +393,7 @@ def get_fast_api_app(
         ),  # Only allows "TEXT" or "AUDIO"
     ) -> None:
       await websocket.accept()
-      session = session_service.get_session(
+      session = await session_service.get_session(
           app_name=app_name, user_id=user_id, session_id=session_id
       )
       if not session:

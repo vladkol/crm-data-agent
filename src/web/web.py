@@ -53,7 +53,7 @@ st.title("📊 CRM Data Agent 🦄")
 st.subheader("This Agent can perform Data Analytics tasks "
              "over Salesforce data in BigQuery.")
 st.markdown("[github.com/vladkol/crm-data-agent]"
-            "(https://github.com/vladkol/crm-data-agent)")
+            "(goo.gle/cloud-crm-data-agent?utm_campaign=CDR_0xc245fc42_default_b417442301&utm_medium=external&utm_source=blog)")
 st.markdown("#### Examples of questions:")
 st.markdown("""
 * 📈 Lead conversion trends in the US.
@@ -248,7 +248,7 @@ def _get_user_id() -> str:
     return user_id_md5
 
 
-def _initialize_configuration():
+async def _initialize_configuration():
     if "adk_configured" in st.session_state:
         return st.session_state.adk_configured
     agent_app_name = os.getenv("GOOGLE_CLOUD_AGENT_ENGINE_ID",
@@ -269,10 +269,10 @@ def _initialize_configuration():
     st.session_state.adk_configured = True
 
     # Cleaning up empty sessions
-    sessions_list = _get_all_sessions()
+    sessions_list = await _get_all_sessions()
     deleted_sessions = []
     for index, s in enumerate(sessions_list):
-        session = session_service.get_session(
+        session = await session_service.get_session(
             app_name=st.session_state.app_name,
             user_id=_get_user_id(),
             session_id=s.id)
@@ -281,7 +281,7 @@ def _initialize_configuration():
             # Couldn't come with a better place
             # without increasing complexity.
             try:
-                session_service.delete_session(
+                await session_service.delete_session(
                     app_name=st.session_state.app_name,
                     user_id=_get_user_id(),
                     session_id=s.id
@@ -300,9 +300,9 @@ def _initialize_configuration():
 
 ######################### Session management #########################
 
-def _create_session() -> Session:
+async def _create_session() -> Session:
     if "adk_session" not in st.session_state:
-        session = st.session_state.session_service.create_session(
+        session = await st.session_state.session_service.create_session(
             app_name=st.session_state.app_name,
             user_id=_get_user_id()
         )
@@ -313,10 +313,10 @@ def _create_session() -> Session:
     return st.session_state.adk_session
 
 
-def _get_all_sessions() -> list[Session]:
+async def _get_all_sessions() -> list[Session]:
     if "all_adk_sessions" in st.session_state:
         return st.session_state.all_adk_sessions
-    sessions_response = st.session_state.session_service.list_sessions(
+    sessions_response = await st.session_state.session_service.list_sessions(
             app_name=st.session_state.app_name,
             user_id=_get_user_id())
     sessions = sessions_response.sessions
@@ -343,7 +343,7 @@ async def ask_agent(question: str):
         ValueError(f"`{runtime_name}` is not a valid runtime name.")
 
     model_events_cnt = 0 # Count valid model events in this run
-    st.session_state.session_service.append_event(
+    await st.session_state.session_service.append_event(
         session=st.session_state.adk_session,
         event=Event(
             author="user",
@@ -369,7 +369,7 @@ async def ask_agent(question: str):
             if event.content and event.content.role == "model":
                 model_events_cnt += 1
             await _render_chat([event])
-    st.session_state.session_service.append_event(
+    await st.session_state.session_service.append_event(
         session=st.session_state.adk_session,
         event=Event(
             author="user",
@@ -381,7 +381,7 @@ async def ask_agent(question: str):
         )
     )
     # Re-retrieve the session
-    st.session_state.adk_session = st.session_state.session_service.get_session(
+    st.session_state.adk_session = await st.session_state.session_service.get_session(
         app_name=session.app_name,
         user_id=session.user_id,
         session_id=session.id
@@ -397,10 +397,10 @@ async def app():
 
     if "adk_configured" not in st.session_state:
         with st.spinner("Initializing...", show_time=False):
-            _initialize_configuration()
-            sessions_list = _get_all_sessions()
+            await _initialize_configuration()
+            sessions_list = await _get_all_sessions()
     else:
-        sessions_list = _get_all_sessions()
+        sessions_list = await _get_all_sessions()
     session_ids = [s.id for s in sessions_list]
     session_service = st.session_state.session_service
     current_session = None
@@ -425,7 +425,7 @@ async def app():
     elif selected_session_id != -1:
         selected_session = sessions_list[current_index]
         with st.spinner("Loading...", show_time=False):
-            current_session = session_service.get_session(
+            current_session = await session_service.get_session(
                 app_name=selected_session.app_name,
                 user_id=selected_session.user_id,
                 session_id=selected_session.id
@@ -434,7 +434,7 @@ async def app():
 
     if not current_session:
         with st.spinner("Creating a new session...", show_time=False):
-            current_session = _create_session()
+            current_session = await _create_session()
         st.session_state.adk_session = current_session
         st.rerun()
     else:
@@ -445,7 +445,7 @@ async def app():
         if st.button("New Session"):
             with st.spinner("Creating a new session...", show_time=False):
                 st.session_state.pop("adk_session", None)
-                current_session = _create_session()
+                current_session = await _create_session()
                 st.session_state.adk_session = current_session
                 st.query_params["session"] = current_session.id
             st.rerun()
@@ -459,7 +459,7 @@ async def app():
         if selected_option and selected_option != current_session.id: # type: ignore
             selected_session = sessions[selected_option]
             with st.spinner("Loading...", show_time=False):
-                selected_session = session_service.get_session(
+                selected_session = await session_service.get_session(
                     app_name=selected_session.app_name,
                     user_id=selected_session.user_id,
                     session_id=selected_session.id

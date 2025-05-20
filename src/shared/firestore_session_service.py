@@ -22,7 +22,6 @@ import uuid
 from google.adk.events.event import Event
 from google.adk.sessions.base_session_service import (BaseSessionService,
                                                       GetSessionConfig,
-                                                      ListEventsResponse,
                                                       ListSessionsResponse,
                                                       Session,
                                                       State)
@@ -113,7 +112,7 @@ class FirestoreSessionService(BaseSessionService):
             return self._delete_collection(coll_ref, batch_size)
 
 
-    def create_session(
+    async def create_session(
       self,
       *,
       app_name: str,
@@ -143,7 +142,7 @@ class FirestoreSessionService(BaseSessionService):
         ).update_time.timestamp() # type: ignore
         return session
 
-    def get_session(
+    async def get_session(
       self,
       *,
       app_name: str,
@@ -204,7 +203,7 @@ class FirestoreSessionService(BaseSessionService):
             session.events.append(Event.model_validate(doc.to_dict()))
         return session
 
-    def list_sessions(
+    async def list_sessions(
       self, *, app_name: str, user_id: str
     ) -> ListSessionsResponse:
         sessions_result = []
@@ -224,7 +223,7 @@ class FirestoreSessionService(BaseSessionService):
             sessions_result.append(session)
         return ListSessionsResponse(sessions=sessions_result)
 
-    def delete_session(
+    async def delete_session(
         self, *, app_name: str, user_id: str, session_id: str
     ) -> None:
         app_name = FirestoreSessionService._clean_app_name(app_name)
@@ -241,40 +240,20 @@ class FirestoreSessionService(BaseSessionService):
             )
         )
 
-    def list_events(
-        self,
-        *,
-        app_name: str,
-        user_id: str,
-        session_id: str,
-    ) -> ListEventsResponse:
-        """Lists events in a session."""
-        app_name = FirestoreSessionService._clean_app_name(app_name)
-        events_result = []
-        collection = self._get_events_collection(
-            app_name=app_name,
-            user_id=user_id,
-            session_id=session_id
-        )
-        for doc in collection.order_by("timestamp").stream():
-            event_document = collection.document(doc.id).get().to_dict()
-            events_result.append(Event.model_validate(event_document))
-        return ListEventsResponse(events=events_result)
-
-    def close_session(self, *, session: Session):
+    async def close_session(self, *, session: Session):
         """Closes a session."""
         # No closed sessions supported.
         pass
 
-    def append_event(self, session: Session, event: Event) -> Event:
+    async def append_event(self, session: Session, event: Event) -> Event:
         """Appends an event to a session object."""
         if event.partial:
             return event
-        self.__update_session_state(session, event)
+        await self.__update_session_state(session, event)
         session.events.append(event)
         return event
 
-    def __update_session_state(self, session: Session, event: Event):
+    async def __update_session_state(self, session: Session, event: Event):
         """Updates the session state based on the event."""
         collection = self._get_events_collection(
             app_name=session.app_name,

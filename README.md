@@ -53,7 +53,9 @@ The sample also demonstrates:
 To deploy the sample with demo data to a publicly available Cloud Run service,
 use `Run on Google Cloud` button below.
 
-[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/vladkol/crm-data-agent)
+[![Run on Google Cloud](https://deploy.cloud.run/button.svg)](https://deploy.cloud.run?git_repo=https://github.com/vladkol/crm-data-agent&utm_campaign=CDR_0xc245fc42_default_b417442301&utm_medium=external&utm_source=blog)
+
+You need a Google Cloud Project with a [Billing Account](https://console.cloud.google.com/billing?utm_campaign=CDR_0xc245fc42_default_b417442301&utm_medium=external&utm_source=blog).
 
 ### Manual deployment
 
