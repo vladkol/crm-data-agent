@@ -48,8 +48,8 @@
                 "echo GOOGLE_GENAI_USE_VERTEXAI=1 >>  src/.env",
                 "echo GOOGLE_CLOUD_LOCATION=\"${GOOGLE_CLOUD_REGION}\" >>  src/.env",
                 "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
-                "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
-                "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
+                "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
+                "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "gcloud builds submit ./src --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
             ]
         }
