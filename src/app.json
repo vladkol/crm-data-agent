@@ -35,7 +35,7 @@
         "http2": false
     },
     "build": {
-        "skip": false
+        "skip": true
     },
     "hooks": {
         "prebuild": {
