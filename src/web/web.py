@@ -244,6 +244,7 @@ def _get_user_id() -> str:
             user_id = DEFAULT_USER_ID
     user_id_md5 = hashlib.md5(user_id.lower().encode()).hexdigest()
     st.session_state["agent_user_id"] = user_id_md5
+    st.session_state["agent_user_name"] = user_id
     return user_id_md5
 
 
@@ -348,7 +349,8 @@ async def ask_agent(question: str):
             author="user",
             actions=EventActions(
                 state_delta={
-                    "RUNNING_QUERY": True
+                    "RUNNING_QUERY": True,
+                    "user_name": st.session_state.get("agent_user_name", "")
                 }
             )
         )
