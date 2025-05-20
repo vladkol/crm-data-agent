@@ -33,8 +33,8 @@ flag_options = {
       "browser.gatherUsageStats": False,
       "client.toolbarMode": "viewer",
       "global.developmentMode": False,
-      "theme.font": "Roboto",
-      "logger.level": "info"
+      "theme.font": "Verdana",
+      "logger.level": "info",
 }
 
 if __name__ == "__main__":
