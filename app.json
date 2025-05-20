@@ -40,6 +40,7 @@
     "hooks": {
         "prebuild": {
             "commands": [
+                "gcloud config set project ${GOOGLE_CLOUD_PROJECT} -q",
                 "echo AGENT_NAME=\"${AGENT_NAME}\" >>  src/.env",
                 "echo FIRESTORE_SESSION_DATABASE=\"${FIRESTORE_SESSION_DATABASE}\" >>  src/.env",
                 "echo AI_STORAGE_BUCKET=\"${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT}\" >>  src/.env",
@@ -50,7 +51,7 @@
                 "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
                 "gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "gcloud storage buckets describe gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET_PREFIX}--${GOOGLE_CLOUD_PROJECT} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
-                "gcloud builds submit ./src --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
+                "gcloud builds submit ./src --project=${GOOGLE_CLOUD_PROJECT} --region=${GOOGLE_CLOUD_REGION} --tag ${IMAGE_URL}"
             ]
         }
     }
