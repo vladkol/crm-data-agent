@@ -6,6 +6,8 @@ The agent demonstrates an advanced [Retrieval-Augmented Generation](https://clou
 in a multi-agentic system with contextualized Natural-Language-to-SQL
 components powered by Long Context and In-Context Learning capabilities of [Gemini 2.5 Pro](https://deepmind.google/technologies/gemini).
 
+🚀 **Blog post**: [Forget vibe coding, vibe Business Intelligence is here!](https://medium.com/@vladkol_eqwu/business-intelligence-in-ai-era-how-agents-and-gemini-unlock-your-data-ce158081c678)
+
 The agent is built with [Google Agent Development Kit](https://google.github.io/adk-docs/).
 
 * The agent interprets questions about state of the business how it's reflected in CRM rather than directly referring to Salesforce data entities.
