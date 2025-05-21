@@ -53,7 +53,7 @@ st.title("📊 CRM Data Agent 🦄")
 st.subheader("This Agent can perform Data Analytics tasks "
              "over Salesforce data in BigQuery.")
 st.markdown("[github.com/vladkol/crm-data-agent]"
-            "(goo.gle/cloud-crm-data-agent?utm_campaign=CDR_0xc245fc42_default_b417442301&utm_medium=external&utm_source=blog)")
+            "(https://goo.gle/cloud-crm-data-agent?utm_campaign=CDR_0xc245fc42_default_b417442301&utm_medium=external&utm_source=blog)")
 st.markdown("#### Examples of questions:")
 st.markdown("""
 * 📈 Lead conversion trends in the US.

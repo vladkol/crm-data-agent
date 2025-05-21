@@ -200,7 +200,12 @@ class FirestoreSessionService(BaseSessionService):
         if not query:
             query = events_collection.order_by("timestamp")
         for doc in query.stream():
-            session.events.append(Event.model_validate(doc.to_dict()))
+            session.events.append(
+                Event.model_validate(
+                    doc.to_dict(),
+                    strict=False
+                )
+            )
         return session
 
     async def list_sessions(

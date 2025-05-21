@@ -5,7 +5,7 @@ platformdirs
 Flask
 gunicorn
 scikit-learn
-google-genai
+google-genai==1.16.*
 pillow
 pandas
 google-cloud-aiplatform[adk]==1.93.0

@@ -17,6 +17,7 @@ from functools import cache
 import json
 import os
 from pathlib import Path
+import uuid
 from typing import Tuple
 
 from pydantic import BaseModel
@@ -27,6 +28,7 @@ from google.genai.types import (Content,
                                 GenerateContentConfig,
                                 Part,
                                 SafetySetting)
+from google.adk.tools import ToolContext
 
 from .utils import get_genai_client
 from prompts.data_engineer import (system_instruction
@@ -118,7 +120,7 @@ class SQLResult(BaseModel):
 
 
 ######## AGENT ########
-def data_engineer(request: str) -> SQLResult:
+async def data_engineer(request: str, tool_context: ToolContext) -> SQLResult:
     """
     This is your Senior Data Engineer.
     They have extensive experience in working with CRM data.
@@ -205,6 +207,14 @@ def data_engineer(request: str) -> SQLResult:
         validating_query = corr_result.sql_code # type: ignore
     if is_good:
         print(f"Final result: {validating_query}")
+        sql_markdown = f"```sql\n{validating_query}\n```"
+        await tool_context.save_artifact(
+            f"query_{uuid.uuid4().hex}.md",
+            Part.from_bytes(
+                mime_type="text/markdown",
+                data=sql_markdown.encode("utf-8")
+            )
+        )
         return SQLResult(sql_code=validating_query)
     else:
         return SQLResult(

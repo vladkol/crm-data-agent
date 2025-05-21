@@ -13,14 +13,35 @@
 # limitations under the License.
 """Business Analyst Agent"""
 
+import uuid
+
 from google.adk.agents import LlmAgent
-from google.genai.types import GenerateContentConfig, SafetySetting
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmResponse
+
+from google.genai.types import GenerateContentConfig, Part, SafetySetting
 
 from prompts.crm_business_analyst import (system_instruction
                                           as crm_business_analyst_instruction)
 
 
 BUSINESS_ANALYST_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
+
+
+async def after_model_callback(callback_context: CallbackContext,
+                          llm_response: LlmResponse) -> LlmResponse | None:
+    if not llm_response.content or not llm_response.content.parts:
+        return
+    for p in llm_response.content.parts:
+        if p.text and p.text.strip():
+            await callback_context.save_artifact(
+                f"analysis_{uuid.uuid4().hex}.md",
+                Part.from_bytes(
+                    mime_type="text/markdown",
+                    data=p.text.encode("utf-8")
+                )
+            )
+
 
 crm_business_analyst_agent = LlmAgent(
     model=BUSINESS_ANALYST_AGENT_MODEL_ID,
@@ -49,5 +70,7 @@ crm_business_analyst_agent = LlmAgent(
                 category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore
                 threshold="BLOCK_ONLY_HIGH", # type: ignore
             ),
-        ])
+        ]
+    ),
+    after_model_callback=after_model_callback
 )
