@@ -35,6 +35,7 @@ gcloud run deploy "{sys.argv[1]}"
         --no-cpu-throttling
         --source "./src"
         --timeout 1h
+        -q
 """.replace("\n", " ").strip()
 
 subprocess.run(cmd_line, shell=True)
