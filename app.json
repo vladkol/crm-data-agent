@@ -13,7 +13,7 @@
         "prebuild": {
             "commands": [
                 "gcloud config set project ${GOOGLE_CLOUD_PROJECT} -q",
-                "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT}",
+                "gcloud services enable aiplatform.googleapis.com cloudbuild.googleapis.com run.googleapis.com firestore.googleapis.com bigquery.googleapis.com --project=${GOOGLE_CLOUD_PROJECT} || true",
                 "pip install -q -U google-cloud-bigquery google-cloud-bigquery-storage",
                 "git clone --depth 1 --no-tags https://github.com/vladkol/sfdc-kittycorn ./data; rm -rf ./data/.git/"
             ]
