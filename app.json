@@ -1,31 +1,4 @@
 {
-    "env": {
-        "AGENT_NAME": {
-            "description": "Agent Service Name",
-            "order": 100,
-            "value":"crm-data-agent"
-        },
-        "FIRESTORE_SESSION_DATABASE": {
-            "description": "Name of Firestore Database for storing session data",
-            "order": 101,
-            "value": "agent-sessions"
-        },
-        "AI_STORAGE_BUCKET_PREFIX": {
-            "description": "Prefix of Cloud Storage bucket for Artifact data (project id will be added)",
-            "order": 102,
-            "value": "crm-data-agent-artifacts"
-        },
-        "SFDC_BQ_DATASET":{
-            "description": "Name of BigQuery dataset where Salesforce demo data will be stored.",
-            "order": 103,
-            "value": "sfdc_data"
-        },
-        "BQ_LOCATION":{
-            "description": "BigQuery location",
-            "order": 104,
-            "value": "US"
-        }
-    },
     "options": {
         "allow-unauthenticated": true,
         "memory": "32Gi",
