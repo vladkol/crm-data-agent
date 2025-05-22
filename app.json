@@ -26,7 +26,7 @@
                 "echo AGENT_NAME=\"crm-data-agent\" >>  src/.env",
                 "echo FIRESTORE_SESSION_DATABASE=\"agent-sessions\" >>  src/.env",
                 "echo AI_STORAGE_BUCKET=\"crm-data-agent-artifacts--${GOOGLE_CLOUD_PROJECT}\" >>  src/.env",
-                "echo BQ_LOCATION=\"crm-data-agent-artifacts\" >>  src/.env",
+                "echo BQ_LOCATION=\"US\" >>  src/.env",
                 "echo SFDC_BQ_DATASET=\"sfdc_data\" >>  src/.env",
                 "source src/.env; gcloud firestore databases describe --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} -q &> /dev/null || gcloud firestore databases create --database=${FIRESTORE_SESSION_DATABASE} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
                 "source src/.env; gcloud storage buckets describe gs://${AI_STORAGE_BUCKET} -q &> /dev/null || gcloud storage buckets create gs://${AI_STORAGE_BUCKET} --project=${GOOGLE_CLOUD_PROJECT} --location=${GOOGLE_CLOUD_REGION}",
