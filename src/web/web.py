@@ -29,7 +29,6 @@ from google.genai.types import Content, Part
 
 from google.adk.events import Event, EventActions
 from google.adk.sessions import Session
-from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from shared.firestore_session_service import (FirestoreSessionService
                                             as SessionService)
 
@@ -261,11 +260,9 @@ async def _initialize_configuration():
     artifact_service = GcsArtifactService(
         bucket_name=vertex_ai_bucket
     )
-    memory_service = InMemoryMemoryService()
     st.session_state.artifact_service = artifact_service
     st.session_state.session_service = session_service
     st.session_state.app_name = agent_app_name
-    st.session_state.memory_service = memory_service
     st.session_state.adk_configured = True
 
     # Cleaning up empty sessions
