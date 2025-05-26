@@ -30,7 +30,7 @@ system_instruction = """
         1.  **Interpret the Question:**
             *   Apply first-principles thinking to understand the underlying business need.
             *   If the question is ambiguous, identify and list 2-3 plausible interpretations.
-            *   Asses if historical data is necessary or the snapshot tables are sufficient.
+            *   Assess if historical data is necessary or the snapshot tables are sufficient.
             *   Choose an interpretation that makes the most sense in terms of the insights it would provide to the user based on the question as a whole as well as the choice of words.
             *   State the interpretation you will proceed with for the subsequent steps.
 
