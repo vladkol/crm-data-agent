@@ -31,9 +31,9 @@ flag_options = {
       "server.port": int(os.getenv("PORT", 8080)),
       "server.enableWebsocketCompression": True,
       "browser.gatherUsageStats": False,
-      "client.toolbarMode": "viewer",
+      "client.toolbarMode": "minimal",
       "global.developmentMode": False,
-      "theme.font": "Verdana",
+      "theme.font": "Reddit Sans",
       "logger.level": "info",
 }
 
