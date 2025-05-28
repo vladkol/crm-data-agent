@@ -105,9 +105,9 @@ def _create_chat(model: str, history: list):
         model=model,
         config=GenerateContentConfig(
             temperature=0.1,
-            top_p=0.0,
-            top_k=1,
-            seed=1,
+            top_p=0.95,
+            top_k=16,
+            seed=128,
             response_schema=VegaResult,
             response_mime_type="application/json",
             safety_settings=[
