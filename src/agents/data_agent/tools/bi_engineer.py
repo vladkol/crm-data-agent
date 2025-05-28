@@ -16,8 +16,6 @@
 from functools import cache
 import io
 import json
-import jsonschema
-from pathlib import Path
 import os
 
 from pydantic import BaseModel
@@ -28,6 +26,7 @@ from google.cloud.bigquery import Client, QueryJobConfig
 from google.cloud.exceptions import BadRequest, NotFound
 
 import altair as alt
+from altair.vegalite.schema import core as alt_core
 import pandas as pd
 
 from .utils import get_genai_client
@@ -49,7 +48,7 @@ def _init_environment():
     _dataset = os.environ["SFDC_BQ_DATASET"]
 
 class VegaResult(BaseModel):
-    vega_lite_4_json: str
+    vega_lite_json: str
 
 
 def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
@@ -105,9 +104,8 @@ def _create_chat(model: str, history: list):
         model=model,
         config=GenerateContentConfig(
             temperature=0.1,
-            top_p=0.95,
-            top_k=16,
-            seed=128,
+            top_p=0.0,
+            seed=256,
             response_schema=VegaResult,
             response_mime_type="application/json",
             safety_settings=[
@@ -156,8 +154,11 @@ async def bi_engineer_tool(original_business_question: str,
     else:
         notes_text = ""
 
-    vega_lite_spec = (Path(__file__).parent /
-                      "vega_lite4_schema.json").read_text()
+    vega_lite_spec = json.dumps(
+        alt_core.load_schema(),
+        indent=1,
+        sort_keys=False
+    )
     chart_prompt = bi_engineer_prompt.format(
         original_business_question=original_business_question,
         question_that_sql_result_can_answer=question_that_sql_result_can_answer,
@@ -168,6 +169,7 @@ async def bi_engineer_tool(original_business_question: str,
         dataframe_len=len(df),
         dataframe_head=df.head(10).to_string(),
         vega_lite_spec=vega_lite_spec,
+        vega_lite_schema_version=alt.SCHEMA_VERSION.split(".")[0]
     )
 
     vega_fix_chat = None
@@ -177,7 +179,7 @@ async def bi_engineer_tool(original_business_question: str,
         chart_model = chart_results.parsed # type: ignore
         if chart_model:
             break
-    chart_json = chart_model.vega_lite_4_json # type: ignore
+    chart_json = chart_model.vega_lite_json # type: ignore
 
     for _ in range(5): # 5 tries to make a good chart
         for _ in range(10):
@@ -197,7 +199,12 @@ async def bi_engineer_tool(original_business_question: str,
                 error_reason = ""
                 break
             except Exception as ex:
-                message = f"You made a mistake!\n\nERROR {type(ex).__name__}: " + ex.message if ex is jsonschema.ValidationError else str(ex)
+                message = f"""
+You made a mistake!
+Fix the issues. Redesign the chart if it promises a better result.
+
+ERROR {type(ex).__name__}: {str(ex)}
+""".strip()
                 error_reason = message
                 print(message)
                 if not vega_fix_chat:
@@ -206,7 +213,7 @@ async def bi_engineer_tool(original_business_question: str,
                 print("Fixing...")
                 chart_json = vega_fix_chat.send_message(
                     message
-                ).parsed.vega_lite_4_json # type: ignore
+                ).parsed.vega_lite_json # type: ignore
 
         if not error_reason:
             with io.BytesIO() as file:
@@ -234,7 +241,7 @@ async def bi_engineer_tool(original_business_question: str,
         vega_chat = _create_chat(BI_ENGINEER_AGENT_MODEL_ID, history)
         chart_json = vega_chat.send_message(f"""
             Fix the chart based on the feedback.
-            Only output Vega 4 Lite json.
+            Only output Vega-Lite json.
 
             ***Feedback on the chart below**
             {error_reason}
@@ -245,7 +252,7 @@ async def bi_engineer_tool(original_business_question: str,
             ``json
             {vega_chart_json}
             ````
-            """).parsed.vega_lite_4_json # type: ignore
+            """).parsed.vega_lite_json # type: ignore
 
     print(f"Done working on a chart.")
     if error_reason:

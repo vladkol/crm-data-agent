@@ -39,7 +39,7 @@ You can only criticize readability, composition, color choices, font size, etc.
 {question}
 ```
 
-This is chart json code in Vega 4 Lite (data removed):
+This is chart json code in Vega-Lite (data removed):
 
 ```json
 {chart_json}

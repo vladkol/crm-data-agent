@@ -151,7 +151,7 @@ async def data_engineer(request: str, tool_context: ToolContext) -> SQLResult:
             system_instruction=data_engineer_instruction,
             temperature=0.0,
             top_p=0.0,
-            seed=0,
+            seed=1,
             safety_settings=[
                 SafetySetting(
                     category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore

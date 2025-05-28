@@ -154,7 +154,7 @@ async def _process_event(event: Event) -> bool:
                         with Image.open(image_io) as img:
                             st.image(img)
             elif (artifact.inline_data.mime_type ==
-                        "application/vnd.vegalite.v4+json"
+                        "application/vnd.vegalite.v5+json"
                   or filename.endswith(".vg")
                       and (artifact.inline_data.mime_type in
                             ["application/json", "text/plain"])

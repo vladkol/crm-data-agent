@@ -64,9 +64,9 @@ def evaluate_chart(png_image: bytes,
 You are an experienced Business Intelligence UX designer.
 You can look at a chart or a dashboard, and tell if it the right one for the question.
 """.strip(),
-            temperature=0.0,
-            top_p=0.000001,
-            seed=0,
+            temperature=0.1,
+            top_p=0.0,
+            seed=1,
             safety_settings=[
             SafetySetting(
                 category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore

@@ -65,6 +65,7 @@ crm_business_analyst_agent = LlmAgent(
     generate_content_config=GenerateContentConfig(
         temperature=0.0,
         top_p=0.0,
+        seed=1,
         safety_settings=[
             SafetySetting(
                 category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore
