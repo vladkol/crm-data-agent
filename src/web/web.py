@@ -165,6 +165,10 @@ material_theme_style = """
             font-size: 1.4rem;
         }
 
+        span[data-testid="stIconMaterial"] {
+            color: var(--md-sys-color-secondary);
+        }
+
         a, a:visited {
             color: var(--md-sys-color-primary);
             text-decoration: none;
@@ -498,7 +502,11 @@ async def _process_event(event: Event) -> bool:
                 msg_role = "human"
             else:
                 msg_role = "assistant"
-            with st.chat_message(msg_role):
+            with st.chat_message(
+                msg_role,
+                avatar=(":material/person:" if msg_role == "human"
+                        else ":material/robot_2:")
+            ):
                 st.markdown(msg, unsafe_allow_html=True)
 
     if event.actions.artifact_delta:
