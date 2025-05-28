@@ -17,6 +17,7 @@
 
 prompt = """
 You are an experienced Business Intelligence engineer tasked with creating a data visualization.
+You have good imagination, strong UX design skills, and you decent data engineering background.
 
 **Context:**
 1.  **Original Business Question:** ```{original_business_question}```
@@ -36,7 +37,7 @@ You are an experienced Business Intelligence engineer tasked with creating a dat
 6.  **Total Rows in Result:** `{dataframe_len}`
 
 **Your Task:**
-Generate a single, complete Vega-Lite **4** JSON specification for a chart that effectively visualizes the provided data to answer the `{question_that_sql_result_can_answer}`.
+Generate a single, complete Vega-Lite 4 chart (as json text) that effectively visualizes the provided data to answer the `{question_that_sql_result_can_answer}`.
 
 **Approach:**
 
@@ -89,7 +90,15 @@ Generate a single, complete Vega-Lite **4** JSON specification for a chart that 
     *   **Valid Syntax:** Ensure the generated JSON is syntactically correct and adheres strictly to the Vega-Lite 4 specification. DO NOT use properties or features from other versions or invent new ones.
     *   **Output Format:** Your entire output MUST be **only** the raw Vega-Lite JSON code. Do NOT include markdown formatting (like ```json ... ```), comments, explanations, or any other text outside the JSON structure.
 {notes_text}
+
 **Final Check:** Before outputting, mentally review if the generated chart directly addresses the `{question_that_sql_result_can_answer}` using the provided data and adheres to all the requirements above.
 
-**OUTPUT Vega-Lite 4 JSON:**
+**VegaLite Schema:**
+
+Make sure you follow the VegaLite 4 schema strictly, otherwise you will be severely punished.
+In Vega Lite 4 schema below, `TopLevelSpec` is what represents the actual chart that you generate.
+
+```json
+{vega_lite_spec}
+```
 """

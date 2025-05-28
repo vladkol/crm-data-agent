@@ -50,7 +50,6 @@ def _init_environment():
 
 class VegaResult(BaseModel):
     vega_lite_4_json: str
-    diagram_code_explanation: str = ""
 
 
 def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
@@ -102,22 +101,9 @@ def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
 
 
 def _create_chat(model: str, history: list):
-    vega_lite_spec = (Path(__file__).parent /
-                      "vega_lite4_schema.json").read_text()
     return get_genai_client().chats.create(
         model=model,
         config=GenerateContentConfig(
-            system_instruction=f"""
-You are an experienced Business Intelligence engineer,
-proficient in building business charts and dashboards using Vega Lite.
-You have good imagination, strong UX design skills, and you decent data engineering background.
-
-You always write Vega Lite 4 code according to its JSON schema:
-
-```json
-{vega_lite_spec}
-```
-            """.strip(),
             temperature=0.1,
             top_p=0.0,
             top_k=1,
@@ -170,6 +156,8 @@ async def bi_engineer_tool(original_business_question: str,
     else:
         notes_text = ""
 
+    vega_lite_spec = (Path(__file__).parent /
+                      "vega_lite4_schema.json").read_text()
     chart_prompt = bi_engineer_prompt.format(
         original_business_question=original_business_question,
         question_that_sql_result_can_answer=question_that_sql_result_can_answer,
@@ -179,6 +167,7 @@ async def bi_engineer_tool(original_business_question: str,
         dataframe_preview_len=min(10,len(df)),
         dataframe_len=len(df),
         dataframe_head=df.head(10).to_string(),
+        vega_lite_spec=vega_lite_spec,
     )
 
     vega_fix_chat = None
@@ -208,7 +197,7 @@ async def bi_engineer_tool(original_business_question: str,
                 error_reason = ""
                 break
             except Exception as ex:
-                message = f"ERROR {type(ex).__name__}: " + ex.message if ex is jsonschema.ValidationError else str(ex)
+                message = f"You made a mistake!\n\nERROR {type(ex).__name__}: " + ex.message if ex is jsonschema.ValidationError else str(ex)
                 error_reason = message
                 print(message)
                 if not vega_fix_chat:
