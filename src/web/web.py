@@ -47,7 +47,7 @@ user_agent = st.context.headers["User-Agent"]
 if " Mobile" in user_agent:
     initial_sidebar_state = "collapsed"
 else:
-    initial_sidebar_state = "expanded"
+    initial_sidebar_state = "collapsed" # or "expanded"
 
 st.set_page_config(layout="wide",
                    page_icon=":material/bar_chart:",
@@ -414,7 +414,11 @@ material_theme_style = """
 """
 st.markdown(material_theme_style, unsafe_allow_html=True)
 
-st.title("📊 CRM Data Agent")
+st.markdown("""
+<a href="/" target="_blank" style="color: var(--md-sys-color-on-primary-container); text-decoration: none;">
+<h1><i class='material-icons' style="color: var(--md-sys-color-primary)">leaderboard</i> CRM Data Agent</h1>
+</a>
+""".strip(), unsafe_allow_html=True)
 st.subheader("This Agent can perform Data Analytics tasks "
              "over Salesforce data in BigQuery.")
 st.markdown("[github.com/vladkol/crm-data-agent]"
@@ -558,6 +562,11 @@ async def _process_event(event: Event) -> bool:
                 st.json(artifact.inline_data.data.decode("utf-8"))
             elif artifact.inline_data.mime_type == "text/markdown":
                 st.markdown(artifact.inline_data.data.decode("utf-8"),
+                            unsafe_allow_html=True)
+            elif artifact.inline_data.mime_type == "text/x-sql":
+                st.markdown("```sql\n" +
+                            artifact.inline_data.data.decode("utf-8") +
+                            "```\n",
                             unsafe_allow_html=True)
             elif artifact.inline_data.mime_type == "text/csv":
                 st.markdown(

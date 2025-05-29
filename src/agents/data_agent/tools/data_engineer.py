@@ -116,6 +116,7 @@ def _sql_validator(sql_code: str) -> Tuple[str, str]:
 
 class SQLResult(BaseModel):
     sql_code: str
+    sql_code_file_name: str
     error: str = ""
 
 
@@ -207,17 +208,29 @@ async def data_engineer(request: str, tool_context: ToolContext) -> SQLResult:
         validating_query = corr_result.sql_code # type: ignore
     if is_good:
         print(f"Final result: {validating_query}")
-        sql_markdown = f"```sql\n{validating_query}\n```"
+        # sql_markdown = f"```sql\n{validating_query}\n```"
+        sql_file_prefix = f"query_{uuid.uuid4().hex}"
+        # await tool_context.save_artifact(
+        #     f"{sql_file_prefix}.md",
+        #     Part.from_bytes(
+        #         mime_type="text/markdown",
+        #         data=sql_markdown.encode("utf-8")
+        #     )
+        # )
         await tool_context.save_artifact(
-            f"query_{uuid.uuid4().hex}.md",
+            f"{sql_file_prefix}.sql",
             Part.from_bytes(
-                mime_type="text/markdown",
-                data=sql_markdown.encode("utf-8")
+                mime_type="text/x-sql",
+                data=validating_query.encode("utf-8")
             )
         )
-        return SQLResult(sql_code=validating_query)
+        return SQLResult(
+            sql_code=validating_query,
+            sql_code_file_name=f"{sql_file_prefix}.sql",
+        )
     else:
         return SQLResult(
             sql_code="-- no query",
+            sql_code_file_name="none.sql",
             error=f"## Could not create a valid query in {MAX_FIX_ATTEMPTS}"
                    " attempts.")

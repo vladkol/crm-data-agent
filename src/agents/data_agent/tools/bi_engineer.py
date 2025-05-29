@@ -120,7 +120,7 @@ def _create_chat(model: str, history: list):
 
 async def bi_engineer_tool(original_business_question: str,
                      question_that_sql_result_can_answer: str,
-                     sql_code: str,
+                     sql_file_name: str,
                      notes: str,
                      tool_context: ToolContext) -> str:
     """Senior BI Engineer. Executes SQL code.
@@ -129,7 +129,7 @@ async def bi_engineer_tool(original_business_question: str,
         original_business_question (str): Original business question.
         question_that_sql_result_can_answer (str):
             Specific question or sub-question that SQL result can answer.
-        sql_code (str): BigQuery SQL code execute.
+        sql_file_name (str): File name of BigQuery SQL code execute.
         notes (str): Important notes about the chart. Not empty only if the user stated something directly related to the chart.
 
     Returns:
@@ -137,6 +137,8 @@ async def bi_engineer_tool(original_business_question: str,
              in CSV format (first 50 rows).
     """
     _init_environment()
+    sql_code_part = await tool_context.load_artifact(sql_file_name)
+    sql_code = sql_code_part.inline_data.data.decode("utf-8") # type: ignore
     client = Client(project=_bq_project_id, location=_location)
     try:
         dataset_location = client.get_dataset(
@@ -172,6 +174,7 @@ async def bi_engineer_tool(original_business_question: str,
         vega_lite_schema_version=alt.SCHEMA_VERSION.split(".")[0]
     )
 
+    vega_chart_json = ""
     vega_fix_chat = None
     while True:
         vega_chat = _create_chat(BI_ENGINEER_AGENT_MODEL_ID, [])
