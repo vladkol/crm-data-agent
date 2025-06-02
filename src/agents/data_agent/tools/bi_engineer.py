@@ -13,6 +13,7 @@
 # limitations under the License.
 """BI Engineer Agent"""
 
+from datetime import date, datetime
 from functools import cache
 import io
 import json
@@ -118,6 +119,40 @@ def _create_chat(model: str, history: list):
     )
 
 
+
+def _fix_df_dates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Inspects a DataFrame and converts any 'object' dtype columns
+    that contain date or datetime objects to datetime64[ns].
+
+    Args:
+        df (pd.DataFrame): The DataFrame to fix.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with corrected date types.
+    """
+    df_fixed = df.copy()  # Work on a copy to avoid side effects
+    for col in df_fixed.columns:
+        # Check only for 'object' type columns to be efficient
+        if df_fixed[col].dtype == 'object':
+            try:
+                # Attempt to get the first non-null value
+                first_non_null = df_fixed[col].dropna().iloc[0]
+
+                # Check if it's a date or datetime object
+                if isinstance(first_non_null, (date, datetime)):
+                    print(f"Converting column '{col}' to datetime64[ns]...")
+                    df_fixed[col] = pd.to_datetime(df_fixed[col])
+            except IndexError:
+                # This happens if the column is all NaNs
+                continue
+            except Exception:
+                # The column might be 'object' but not contain dates
+                continue
+
+    return df_fixed
+
+
 async def bi_engineer_tool(original_business_question: str,
                      question_that_sql_result_can_answer: str,
                      sql_file_name: str,
@@ -147,6 +182,7 @@ async def bi_engineer_tool(original_business_question: str,
         df: pd.DataFrame = client.query(sql_code,
                      job_config=job_config,
                      location=dataset_location).result().to_dataframe()
+        df = _fix_df_dates(df)
     except (BadRequest, NotFound) as ex:
         err_text = ex.args[0].strip()
         return f"BIGQUERY ERROR: {err_text}"

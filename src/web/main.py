@@ -33,7 +33,8 @@ flag_options = {
       "browser.gatherUsageStats": False,
       "client.toolbarMode": "minimal",
       "global.developmentMode": False,
-      "theme.font": "Reddit Sans",
+      "theme.font": "Inter, Verdana",
+      "theme.base": "dark",
       "logger.level": "info",
 }
 

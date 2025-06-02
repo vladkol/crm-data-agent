@@ -14,6 +14,7 @@
 """Agent streamlit web app"""
 
 import asyncio
+import base64
 import hashlib
 from io import BytesIO
 import json
@@ -24,6 +25,9 @@ from time import time
 
 import pandas as pd
 import streamlit as st
+
+import yfinance as yf
+import matplotlib.pyplot as plt
 
 from google.genai.types import Content, Part
 
@@ -41,13 +45,23 @@ MAX_RUN_RETRIES = 10
 DEFAULT_USER_ID = "user@ai"
 DEFAULT_AGENT_NAME = "default-agent"
 
+TICKERS = {
+    "GOOGL": "Alphabet Inc.",
+    "MSFT": "Microsoft Corporation",
+    "AMZN": "Amazon.com, Inc.",
+    "^GSPC": "S&P 500",
+    "^DJI": "Dow Jones Industrial Average",
+    "^IXIC": "Nasdaq Composite",
+}
+
+
 logging.getLogger().setLevel(logging.INFO)
 
 user_agent = st.context.headers["User-Agent"]
 if " Mobile" in user_agent:
     initial_sidebar_state = "collapsed"
 else:
-    initial_sidebar_state = "collapsed" # or "expanded"
+    initial_sidebar_state = "expanded"
 
 st.set_page_config(layout="wide",
                    page_icon=":material/bar_chart:",
@@ -56,28 +70,30 @@ st.set_page_config(layout="wide",
 
 material_theme_style = """
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Reddit+Sans:ital,wght@0,200..900;1,200..900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300&display=swap" rel="stylesheet">
     <style>
         :root {
-            --md-sys-color-primary: #4285F4; /* Google Blue */
-            --md-sys-color-on-primary: #FFFFFF;
-            --md-sys-color-primary-container: #E3F2FD; /* Lighter Blue */
-            --md-sys-color-on-primary-container: #0D47A1; /* Darker Blue for text on container */
-            --md-sys-color-secondary: #34A853; /* Google Green */
-            --md-sys-color-on-secondary: #FFFFFF;
-            --md-sys-color-surface: #FFFFFF;
-            --md-sys-color-on-surface: #202124; /* Dark Gray text */
-            --md-sys-color-surface-container-highest: #E0E2E6; /* Slightly darker than surface-variant for AI chat bubbles */
-            --md-sys-color-surface-variant: #F1F3F4; /* Light gray for backgrounds or less prominent cards */
-            --md-sys-color-on-surface-variant: #3C4043; /* Medium gray text, slightly darker for better contrast */
-            --md-sys-color-background: #F8F9FA; /* Page background */
-            --md-sys-color-outline: #DADCE0; /* Borders */
-            --md-sys-color-error: #EA4335; /* Google Red */
-            --md-font-family: 'Reddit Sans', sans-serif;
+            --md-sys-color-primary: #8AB4F8; /* Lighter Google Blue for dark theme */
+            --md-sys-color-on-primary: #101010; /* Dark text for contrast on light blue */
+            --md-sys-color-primary-container: #1E3A5F; /* Dark Blue container */
+            --md-sys-color-on-primary-container: #E3F2FD; /* Light text for contrast on dark blue container */
+            --md-sys-color-secondary: #81C995; /* Lighter Google Green for dark theme */
+            --md-sys-color-on-secondary: #101010; /* Dark text for contrast on light green */
+            --md-sys-color-surface: #121212; /* Dark Gray surface */
+            --md-sys-color-on-surface: #E8EAED; /* Light Gray text */
+            --md-sys-color-surface-container-highest: #3C4043; /* Darker gray for AI chat bubbles */
+            --md-sys-color-surface-variant: #202124; /* Dark gray for backgrounds or less prominent cards */
+            --md-sys-color-on-surface-variant: #BDC1C6; /* Medium gray text */
+            --md-sys-color-background: #000000; /* Black page background */
+            --md-sys-color-outline: #5F6368; /* Gray borders */
+            --md-sys-color-error: #F28B82; /* Lighter Google Red for dark theme */
+            --md-font-family: 'Inter', Verdana;
             --md-border-radius: 8px;
             --md-border-radius-large: 16px; /* For chat bubbles */
-            --md-elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.06), 0px 1px 3px 0px rgba(0, 0, 0, 0.10);
-            --md-elevation-2: 0px 2px 4px -1px rgba(0,0,0,0.06), 0px 4px 5px 0px rgba(0,0,0,0.10);
+            --md-elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 0px rgba(0, 0, 0, 0.15);
+            --md-elevation-2: 0px 2px 4px -1px rgba(0,0,0,0.3), 0px 4px 5px 0px rgba(0,0,0,0.15);
 
         }
 
@@ -99,7 +115,7 @@ material_theme_style = """
             padding-bottom: 7rem; /* Increased space for chat input */
             padding-left: 2.5rem;
             padding-right: 2.5rem;
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -266,16 +282,17 @@ material_theme_style = """
             opacity: 0.8;
         }
         [data-testid="stChatInput"] button { /* Send button */
-            border-radius: 80% !important;
+            border-radius: 50% !important; /* Perfect circle */
             background-color: var(--md-sys-color-primary) !important;
             color: var(--md-sys-color-on-primary) !important;
             border: none !important;
-            width: 34px !important; /* Slightly larger */
-            height: 34px !important;
-            padding: 10px !important;
-            margin-left: 8px; /* Space from textarea */
+            width: 32px !important; /* Smaller width */
+            height: 32px !important; /* Smaller height */
+            padding: 4px !important; /* Correct padding for the icon */
+            margin-left: 8px;
             box-shadow: var(--md-elevation-1);
-            transform: translateY(-3px) translateX(-2px);
+            /* Corrected transform to shift UP and further LEFT */
+            transform: translateY(-4px) translateX(-8px);
             transition: background-color 0.2s ease, box-shadow 0.2s ease;
             z-index: 999;
         }
@@ -410,6 +427,99 @@ material_theme_style = """
             background-color: var(--md-sys-color-primary);
         }
 
+        /* TICKERS */
+        /* Main container for each ticker row */
+        .ticker-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #2c2c34;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .ticker-row:hover {
+            background-color: #2c2c34;
+            border-radius: 8px;
+        }
+
+        /* Left side: Ticker symbol and company name */
+        .ticker-info {
+            flex: 2; /* Takes up more space */
+            min-width: 0;
+        }
+        .ticker-symbol {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #FFFFFF;
+            margin: 0;
+            white-space: nowrap; /* Prevents symbol from wrapping */
+        }
+        .company-name {
+            font-size: 0.85em;
+            color: #a0a0b0; /* Lighter grey for subtitle */
+            margin: 0;
+            text-overflow: ellipsis; /* Adds '...' if name is too long */
+        }
+
+        /* Middle: Sparkline chart */
+        .sparkline {
+            flex: 2;
+            text-align: center;
+            padding: 0 10px;
+            min-width: 0; /* << FIX: Robustness for all flex items */
+        }
+        .sparkline img {
+            height: 30px;
+            width: 100%;
+            filter: brightness(1.2); /* Optional: make colors pop a bit more */
+        }
+
+        /* Right side: Price and percentage change */
+        .price-info {
+            flex: 1.5;
+            text-align: right;
+            min-width: 0; /* << FIX: Robustness for all flex items */
+        }
+        .price {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #FFFFFF;
+            margin: 0;
+        }
+        .change {
+            font-size: 0.9em;
+            margin-top: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end; /* Align items to the right */
+        }
+        .positive {
+            color: #26A69A; /* Green from the image */
+        }
+        .negative {
+            color: #EF5350; /* Red from the image */
+        }
+
+        /* Arrow icon styling */
+        .arrow {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+        .arrow-up {
+            background-color: #26A69A;
+        }
+        .arrow-down {
+            background-color: #EF5350;
+        }
     </style>
 """
 st.markdown(material_theme_style, unsafe_allow_html=True)
@@ -449,6 +559,63 @@ header {
 </style>
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+######################### Tickers data #########################
+# --- DATA FETCHING & HELPERS ---
+@st.cache_data(ttl=300)  # Cache data for 5 minutes
+def get_ticker_data(symbol, name):
+    """Fetches historical and current data for a given ticker symbol."""
+    try:
+        ticker = yf.Ticker(symbol)
+
+        # Get historical data for the sparkline (last 7 days, 1-hour interval)
+        hist = ticker.history(period="7d", interval="1h")
+        if hist.empty:
+            return None
+
+        # Get data for price and change (last 2 days)
+        daily_hist = ticker.history(period="2d")
+        if len(daily_hist) < 2:
+            # Fallback if not enough data for change calculation
+            price = hist['Close'].iloc[-1]
+            change = 0
+            percent_change = 0
+        else:
+            price = daily_hist['Close'].iloc[-1]
+            prev_close = daily_hist['Close'].iloc[-2]
+            change = price - prev_close
+            percent_change = (change / prev_close) * 100
+
+        # Use the provided friendly name or fallback to the ticker info
+        info = ticker.info
+        company_name = info.get('longName', name)
+        symbol_display = info.get('symbol', symbol).replace('^', '')
+
+        return {
+            "symbol_display": symbol_display,
+            "name": company_name,
+            "history": hist['Close'],
+            "price": price,
+            "change": change,
+            "percent_change": percent_change
+        }
+    except Exception as e:
+        st.error(f"Could not fetch data for {symbol}: {e}", icon="⚠️")
+        return None
+
+def create_sparkline_svg(data, color):
+    fig, ax = plt.subplots(figsize=(4, 1))
+    ax.plot(data.index, data.values, color=color, linewidth=2)
+    ax.set_yticklabels([]); ax.set_xticklabels([])
+    ax.tick_params(axis='both', which='both', length=0)
+    for spine in ax.spines.values(): spine.set_visible(False)
+    fig.patch.set_alpha(0.0); ax.patch.set_alpha(0.0)
+    svg_buffer = BytesIO()
+    fig.savefig(svg_buffer, format='svg', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+    # << ENCODING STEP >> Encode the SVG to Base64
+    svg_base64 = base64.b64encode(svg_buffer.getvalue()).decode("utf-8")
+    return f"data:image/svg+xml;base64,{svg_base64}"
 
 ######################### Event rendering #########################
 @st.fragment
@@ -732,37 +899,41 @@ async def ask_agent(question: str):
             )
         )
     )
-    for _ in range(MAX_RUN_RETRIES):
-        if model_events_cnt > 0:
-            break
-        async for event in runtime.stream_query(question):
-            # If no valid model events in this run, but got an func call error,
-            # retry the run
-            if (event.error_code
-                    and event.error_code == "MALFORMED_FUNCTION_CALL"
-                    and model_events_cnt == 0):
-                print("Retrying the run")
+    try:
+        st.session_state.thinking = True
+        for _ in range(MAX_RUN_RETRIES):
+            if model_events_cnt > 0:
                 break
-            if event.content and event.content.role == "model":
-                model_events_cnt += 1
-            await _render_chat([event])
-    await st.session_state.session_service.append_event(
-        session=st.session_state.adk_session,
-        event=Event(
-            author="user",
-            actions=EventActions(
-                state_delta={
-                    "RUNNING_QUERY": False
-                }
+            async for event in runtime.stream_query(question):
+                # If no valid model events in this run, but got an func call error,
+                # retry the run
+                if (event.error_code
+                        and event.error_code == "MALFORMED_FUNCTION_CALL"
+                        and model_events_cnt == 0):
+                    print("Retrying the run")
+                    break
+                if event.content and event.content.role == "model":
+                    model_events_cnt += 1
+                await _render_chat([event])
+        await st.session_state.session_service.append_event(
+            session=st.session_state.adk_session,
+            event=Event(
+                author="user",
+                actions=EventActions(
+                    state_delta={
+                        "RUNNING_QUERY": False
+                    }
+                )
             )
         )
-    )
-    # Re-retrieve the session
-    st.session_state.adk_session = await st.session_state.session_service.get_session(
-        app_name=session.app_name,
-        user_id=session.user_id,
-        session_id=session.id
-    )
+        # Re-retrieve the session
+        st.session_state.adk_session = await st.session_state.session_service.get_session(
+            app_name=session.app_name,
+            user_id=session.user_id,
+            session_id=session.id
+        )
+    finally:
+        st.session_state.thinking = False
     end = time()
     st.text(f"Flow duration: {end - start:.2f}s")
 
@@ -818,6 +989,41 @@ async def app():
         st.query_params["session"] = current_session.id
 
     with st.sidebar:
+        st.markdown("### Watchlist")
+        for symbol, name in TICKERS.items():
+            data = get_ticker_data(symbol, name)
+
+            if data:
+                is_positive = data['change'] >= 0
+                color = "#26A69A" if is_positive else "#EF5350"
+                arrow_class = "arrow-up" if is_positive else "arrow-down"
+                change_class = "positive" if is_positive else "negative"
+                arrow_char = "▲" if is_positive else "▼"
+                sparkline_uri = create_sparkline_svg(data['history'], color=color)
+
+                # Create the HTML structure for one ticker row
+                html = f"""
+                <div class="ticker-row">
+                    <div class="ticker-info">
+                        <p class="ticker-symbol">{data['symbol_display']}</p>
+                        <p class="company-name">{data['name']}</p>
+                    </div>
+                    <div class="sparkline">
+                        <img src="{sparkline_uri}" alt="Sparkline chart">
+                    </div>
+                    <div class="price-info">
+                        <p class="price">${data['price']:.2f}</p>
+                        <p class="change {change_class}">
+                            {data['percent_change']:+.2f}%
+                            <span class="arrow {arrow_class}">{arrow_char}</span>
+                        </p>
+                    </div>
+                </div>
+                """
+                st.html(html)
+                #st.markdown(html, unsafe_allow_html=True)
+
+
         st.markdown("### Sessions")
         if st.button("New Session"):
             with st.spinner("Creating a new session...", show_time=False):
@@ -846,7 +1052,10 @@ async def app():
     with top:
         await _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
-        question = st.chat_input("Ask a question about your data.")
+        question = st.chat_input(
+            "Ask a question about your data.",
+            disabled=st.session_state.get("thinking", False)
+        )
         if "question" not in current_session.state:
             current_session.state["question"] = question
         with top:

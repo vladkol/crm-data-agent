@@ -35,6 +35,8 @@ def get_genai_client() -> genai.Client:
             return _llm_client
         _gemini = Gemini()
         _llm_client = _gemini.api_client
+        if hasattr(_llm_client, "_api_client"):
+            _llm_client._api_client.location = "global"
     return _llm_client
 
 

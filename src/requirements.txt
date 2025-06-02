@@ -9,7 +9,7 @@ scikit-learn
 google-genai==1.16.*
 pillow
 pandas
-google-cloud-aiplatform[adk]==1.93.0
+google-cloud-aiplatform[adk]==1.95.*
 google-cloud-bigquery[pandas]
 google-cloud-bigquery-storage
 google-cloud-firestore==2.20.*
@@ -18,3 +18,5 @@ vl-convert-python
 python-dotenv
 cloudpickle==3.1.1
 pydantic==2.11.4
+yfinance
+matplotlib
