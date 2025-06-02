@@ -44,15 +44,14 @@ from agent_runtime_client import FastAPIEngineRuntime
 MAX_RUN_RETRIES = 10
 DEFAULT_USER_ID = "user@ai"
 DEFAULT_AGENT_NAME = "default-agent"
-
-TICKERS = {
-    "GOOGL": "Alphabet Inc.",
-    "MSFT": "Microsoft Corporation",
-    "AMZN": "Amazon.com, Inc.",
-    "^GSPC": "S&P 500",
-    "^DJI": "Dow Jones Industrial Average",
-    "^IXIC": "Nasdaq Composite",
-}
+DEFAULT_TICKERS = [
+    "GOOGL",
+    "MSFT",
+    "AMZN",
+    "^GSPC",
+    "^DJI",
+    "^IXIC",
+]
 
 
 logging.getLogger().setLevel(logging.INFO)
@@ -519,6 +518,7 @@ material_theme_style = """
         }
         .arrow-down {
             background-color: #EF5350;
+            padding-top: 3px;
         }
     </style>
 """
@@ -563,7 +563,7 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 ######################### Tickers data #########################
 # --- DATA FETCHING & HELPERS ---
 @st.cache_data(ttl=300)  # Cache data for 5 minutes
-def get_ticker_data(symbol, name):
+def get_ticker_data(symbol: str):
     """Fetches historical and current data for a given ticker symbol."""
     try:
         ticker = yf.Ticker(symbol)
@@ -588,7 +588,7 @@ def get_ticker_data(symbol, name):
 
         # Use the provided friendly name or fallback to the ticker info
         info = ticker.info
-        company_name = info.get('longName', name)
+        company_name = info.get('longName', symbol.upper())
         symbol_display = info.get('symbol', symbol).replace('^', '')
 
         return {
@@ -990,8 +990,8 @@ async def app():
 
     with st.sidebar:
         st.markdown("### Watchlist")
-        for symbol, name in TICKERS.items():
-            data = get_ticker_data(symbol, name)
+        for symbol in DEFAULT_TICKERS:
+            data = get_ticker_data(symbol)
 
             if data:
                 is_positive = data['change'] >= 0
@@ -1021,7 +1021,6 @@ async def app():
                 </div>
                 """
                 st.html(html)
-                #st.markdown(html, unsafe_allow_html=True)
 
 
         st.markdown("### Sessions")
