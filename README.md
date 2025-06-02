@@ -15,6 +15,10 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 * It creates interactive [Vega-Lite](https://vega.github.io/vega-lite/) diagrams.
 * It analyzes the results, provides key insights and recommended actions.
 
+<a href="tutorial/img/screenshot-dark.png">
+<img src="tutorial/img/screenshot-dark.png" alt="What are our best lead source in every country?" style="width:900px;"/>
+</a>
+
 ## Google Agent Development Kit
 
 <img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" style="width:64px;"/>
@@ -39,12 +43,6 @@ The sample also demonstrates:
 * "What are our best lead sources?"
   * or more specific "What are our best lead sources by value?"
 * Lead conversion trends in the US.
-
-### Screenshot
-
-<a href="tutorial/img/top_5_customers_screenshot.png">
-<img src="tutorial/img/top_5_customers_screenshot.png" alt="What are our best lead source in every country?" style="width:900px;"/>
-</a>
 
 ### High-Level Design
 
