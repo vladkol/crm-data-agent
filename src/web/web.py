@@ -212,11 +212,11 @@ material_theme_style = """
             background-color: var(--md-sys-color-primary);
             color: var(--md-sys-color-on-primary);
             border: none;
-            padding: 10px 16px;
+            /* padding: 10px 16px; */
             border-radius: var(--md-border-radius);
             font-weight: 500;
             text-align: center;
-            width: calc(100% - 2rem);
+            width: calc(100% - 4rem);
             margin: 1rem 1rem; /* More margin for spacing */
             transition: background-color 0.2s ease, box-shadow 0.2s ease;
             box-shadow: var(--md-elevation-1);
@@ -989,6 +989,12 @@ async def app():
         st.query_params["session"] = current_session.id
 
     with st.sidebar:
+        st.markdown("""
+        <a href="/" target="_blank" style="color: var(--md-sys-color-primary);">
+        <h3>Home</h3>
+        <hr/>
+        </a>
+        """.strip(), unsafe_allow_html=True)
         st.markdown("### Watchlist")
         for symbol in DEFAULT_TICKERS:
             data = get_ticker_data(symbol)
@@ -1023,31 +1029,36 @@ async def app():
                 st.html(html)
 
 
-        st.markdown("### Sessions")
-        if st.button("New Session"):
-            with st.spinner("Creating a new session...", show_time=False):
-                st.session_state.pop("adk_session", None)
-                current_session = await _create_session()
-                st.session_state.adk_session = current_session
-                st.query_params["session"] = current_session.id
-            st.rerun()
+        with st.popover("Sessions"): # st.markdown("### Sessions")
+            if st.button("New Session"):
+                # with st.spinner("Creating a new session...", show_time=False):
+                #     st.session_state.pop("adk_session", None)
+                #     current_session = await _create_session()
+                #     st.session_state.adk_session = current_session
+                #     st.query_params["session"] = current_session.id
+                # st.rerun()
+                st.query_params["session"] = "none"
+                st.rerun()
 
-        sessions_list = st.session_state.all_adk_sessions
-        session_ids = [s.id for s in sessions_list]
-        sessions = {s.id : s for s in sessions_list}
-        selected_option = st.selectbox("Select a session:",
-                                       session_ids,
-                                       index=current_index)
-        if selected_option and selected_option != current_session.id: # type: ignore
-            selected_session = sessions[selected_option]
-            with st.spinner("Loading...", show_time=False):
-                selected_session = await session_service.get_session(
-                    app_name=selected_session.app_name,
-                    user_id=selected_session.user_id,
-                    session_id=selected_session.id
-                )
-            st.session_state.adk_session = selected_session
-            st.query_params["session"] = selected_session.id
+            sessions_list = st.session_state.all_adk_sessions
+            session_ids = [s.id for s in sessions_list]
+            sessions = {s.id : s for s in sessions_list}
+            selected_option = st.selectbox("Select a session:",
+                                        session_ids,
+                                        index=current_index)
+            if selected_option and selected_option != current_session.id: # type: ignore
+                # selected_session = sessions[selected_option]
+                with st.spinner("Loading...", show_time=False):
+                    st.query_params["session"] = selected_option
+                    st.rerun()
+                #     selected_session = await session_service.get_session(
+                #         app_name=selected_session.app_name,
+                #         user_id=selected_session.user_id,
+                #         session_id=selected_session.id
+                #     )
+                # st.session_state.adk_session = selected_session
+                # st.query_params["session"] = selected_session.id
+                # st.rerun()
     with top:
         await _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
