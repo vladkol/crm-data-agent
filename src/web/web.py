@@ -64,7 +64,7 @@ else:
 
 st.set_page_config(layout="wide",
                    page_icon=":material/bar_chart:",
-                   page_title="📊 CRM Data Agent",
+                   page_title="📊 Enterprise Data Agent",
                    initial_sidebar_state=initial_sidebar_state)
 
 material_theme_style = """
@@ -197,7 +197,7 @@ material_theme_style = """
         [data-testid="stSidebar"] {
             background-color: var(--md-sys-color-surface);
             border-right: 1px solid var(--md-sys-color-outline);
-            padding-top: 1rem; /* Add some padding at the top */
+            /*padding-top: 1rem; /* Add some padding at the top */
             box-shadow: var(--md-elevation-1);
         }
          [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 { /* "Sessions" title */
@@ -526,7 +526,7 @@ st.markdown(material_theme_style, unsafe_allow_html=True)
 
 st.markdown("""
 <a href="/" target="_blank" style="color: var(--md-sys-color-on-primary-container); text-decoration: none;">
-<h1><i class='material-icons' style="color: var(--md-sys-color-primary)">leaderboard</i> CRM Data Agent</h1>
+<h1><i class='material-icons' style="color: var(--md-sys-color-primary)">leaderboard</i> Chat with your Data</h1>
 </a>
 """.strip(), unsafe_allow_html=True)
 st.subheader("This Agent can perform Data Analytics tasks "
@@ -562,14 +562,15 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 ######################### Tickers data #########################
 # --- DATA FETCHING & HELPERS ---
-@st.cache_data(ttl=300)  # Cache data for 5 minutes
+@st.cache_data(ttl=300, show_spinner=False)  # Cache data for 5 minutes
 def get_ticker_data(symbol: str):
     """Fetches historical and current data for a given ticker symbol."""
     try:
-        ticker = yf.Ticker(symbol)
+        with st.spinner(f"Getting {symbol} data..."):
+            ticker = yf.Ticker(symbol)
 
-        # Get historical data for the sparkline (last 7 days, 1-hour interval)
-        hist = ticker.history(period="7d", interval="1h")
+            # Get historical data for the sparkline (last 7 days, 1-hour interval)
+            hist = ticker.history(period="7d", interval="1h")
         if hist.empty:
             return None
 
@@ -989,12 +990,14 @@ async def app():
         st.query_params["session"] = current_session.id
 
     with st.sidebar:
-        st.markdown("""
-        <a href="/" target="_blank" style="color: var(--md-sys-color-primary);">
-        <h3>Home</h3>
-        <hr/>
-        </a>
-        """.strip(), unsafe_allow_html=True)
+        with open(os.path.join(os.path.dirname(__file__), "images/logo.svg")) as f:
+            svg = base64.b64encode(f.read().encode("utf-8")).decode("utf-8")
+            st.markdown(f"""
+            <a href="/" target="_blank" style="align-items: center; color: var(--md-sys-color-primary); text-decoration: none">
+            <h2><img style="transform: translateY(-4px);" width="64px" src='data:image/svg+xml;base64,{svg}' /> Enterprise Data Agent</h2>
+            <hr/>
+            </a>
+            """.strip(), unsafe_allow_html=True)
         st.markdown("### Watchlist")
         for symbol in DEFAULT_TICKERS:
             data = get_ticker_data(symbol)
