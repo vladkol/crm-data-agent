@@ -1021,7 +1021,7 @@ async def app():
                         <img src="{sparkline_uri}" alt="Sparkline chart">
                     </div>
                     <div class="price-info">
-                        <p class="price">${data['price']:.2f}</p>
+                        <p class="price">{data['price']:.2f}</p>
                         <p class="change {change_class}">
                             {data['percent_change']:+.2f}%
                             <span class="arrow {arrow_class}">{arrow_char}</span>
