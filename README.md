@@ -1,6 +1,14 @@
 # CRM Data Q&A Agent - Advanced RAG with NL2SQL over Salesforce Data
 
-This is a 📊 Data Analytics Agent that grounds its conversation in Salesforce data replicated to a Data Warehouse in [BigQuery](https://cloud.google.com/bigquery).
+<style>
+td, th {
+   border: none!important;
+}
+</style>
+
+| | |
+| ------------ | ------------- |
+| <img src="src/web/images/logo-dark.svg" width="256"/> | This is a 📊 Data Analytics Agent that grounds its conversation in Salesforce data replicated to a Data Warehouse in BigQuery.    |
 
 The agent demonstrates an advanced [Retrieval-Augmented Generation](https://cloud.google.com/use-cases/retrieval-augmented-generation) workflow
 in a multi-agentic system with contextualized Natural-Language-to-SQL
