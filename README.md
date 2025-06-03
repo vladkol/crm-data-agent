@@ -10,7 +10,7 @@ components powered by Long Context and In-Context Learning capabilities of [Gemi
 
 🚀 **Blog post**: [Forget vibe coding, vibe Business Intelligence is here!](https://medium.com/@vladkol_eqwu/business-intelligence-in-ai-era-how-agents-and-gemini-unlock-your-data-ce158081c678)
 
-The agent is built with [Google Agent Development Kit](https://google.github.io/adk-docs/).
+The agent is built with [Agent Development Kit](https://google.github.io/adk-docs/).
 
 * The agent interprets questions about state of the business how it's reflected in CRM rather than directly referring to Salesforce data entities.
 * It generates SQL query to gather data necessary for answering the question
@@ -21,7 +21,7 @@ The agent is built with [Google Agent Development Kit](https://google.github.io/
 <img src="tutorial/img/screenshot-dark.png" alt="What are our best lead source in every country?" style="width:900px;"/>
 </a>
 
-## Google Agent Development Kit
+## Agent Development Kit
 
 <img src="https://google.github.io/adk-docs/assets/agent-development-kit.png" style="width:64px;"/>
 
