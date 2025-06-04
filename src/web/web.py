@@ -734,7 +734,7 @@ async def _process_event(event: Event) -> bool:
             elif artifact.inline_data.mime_type == "text/x-sql":
                 st.markdown("```sql\n" +
                             artifact.inline_data.data.decode("utf-8") +
-                            "```\n",
+                            "\n```\n",
                             unsafe_allow_html=True)
             elif artifact.inline_data.mime_type == "text/csv":
                 st.markdown(
