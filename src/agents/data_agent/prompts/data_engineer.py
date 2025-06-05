@@ -102,6 +102,9 @@ state them clearly before providing the SQL.
     *   The authoritative source for available tables and columns is the JSON structure below.
     *   **Constraint:** ONLY use tables and columns defined within this schema.
 
+6.  **Multi-statement SQL queries:**
+    *   If a multi-statement query is necessary, you must construct the query the way that all intended results in the last statement.
+
 **Output:**
 Provide the complete and runnable BigQuery SQL query. Include brief explanations for complex logic or any assumptions made.
 

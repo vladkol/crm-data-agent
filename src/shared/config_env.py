@@ -93,4 +93,7 @@ def prepare_environment():
         else:
             os.environ[name] = val
 
+    from google.cloud.aiplatform import init
+    init(location="global")
+
     _prepared = True

@@ -22,7 +22,12 @@ import os
 from pydantic import BaseModel
 
 from google.adk.tools import ToolContext
-from google.genai.types import GenerateContentConfig, Part, SafetySetting
+from google.genai.types import (
+    GenerateContentConfig,
+    Part,
+    SafetySetting,
+    ThinkingConfig
+)
 from google.cloud.bigquery import Client, QueryJobConfig
 from google.cloud.exceptions import BadRequest, NotFound
 
@@ -36,8 +41,8 @@ from tools.chart_evaluator import evaluate_chart
 
 
 MAX_RESULT_ROWS_DISPLAY = 50
-BI_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
-BI_ENGINEER_FIX_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
+BI_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
+BI_ENGINEER_FIX_AGENT_MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
 
 
 @cache
@@ -100,7 +105,7 @@ def _enhance_parameters(vega_chart: dict, df: pd.DataFrame) -> dict:
     return vega_chart
 
 
-def _create_chat(model: str, history: list):
+def _create_chat(model: str, history: list, max_thinking: bool = False):
     return get_genai_client().chats.create(
         model=model,
         config=GenerateContentConfig(
@@ -110,11 +115,15 @@ def _create_chat(model: str, history: list):
             response_schema=VegaResult,
             response_mime_type="application/json",
             safety_settings=[
-            SafetySetting(
-                category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore
-                threshold="BLOCK_ONLY_HIGH", # type: ignore
-            ),
-        ]),
+                SafetySetting(
+                    category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore
+                    threshold="BLOCK_ONLY_HIGH", # type: ignore
+                ),
+            ],
+            thinking_config=(
+                ThinkingConfig(thinking_budget=32768) if max_thinking
+                else None),
+        ),
         history=history
     )
 
@@ -248,7 +257,8 @@ ERROR {type(ex).__name__}: {str(ex)}
                 print(message)
                 if not vega_fix_chat:
                     vega_fix_chat = _create_chat(BI_ENGINEER_FIX_AGENT_MODEL_ID,
-                                                 vega_chat.get_history())
+                                                 vega_chat.get_history(),
+                                                 True)
                 print("Fixing...")
                 chart_json = vega_fix_chat.send_message(
                     message

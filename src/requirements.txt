@@ -1,5 +1,5 @@
 a2a-sdk==0.2.*
-google-adk==1.0.*
+google-adk==1.2.*
 streamlit
 tabulate
 platformdirs
@@ -9,7 +9,7 @@ scikit-learn
 google-genai==1.16.*
 pillow
 pandas
-google-cloud-aiplatform[adk]==1.95.*
+google-cloud-aiplatform[adk]==1.96.*
 google-cloud-bigquery[pandas]
 google-cloud-bigquery-storage
 google-cloud-firestore==2.20.*

@@ -37,9 +37,8 @@ from prompts.data_engineer import (system_instruction
 from prompts.sql_correction import (instruction as sql_correction_instruction,
                                     prompt as sql_correction_prompt)
 
-
-DATA_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
-SQL_VALIDATOR_MODEL_ID =  "gemini-2.5-pro-preview-05-06"
+DATA_ENGINEER_AGENT_MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
+SQL_VALIDATOR_MODEL_ID =  "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
 _DEFAULT_METADATA_FILE = "sfdc_metadata.json"
 
 @cache

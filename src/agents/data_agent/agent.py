@@ -35,9 +35,10 @@ from prompts.root_agent import system_instruction as root_agent_instruction
 from tools.bi_engineer import bi_engineer_tool
 from tools.crm_business_analyst import crm_business_analyst_agent
 from tools.data_engineer import data_engineer
+from tools.utils import get_gemini_model
 
 
-ROOT_AGENT_MODEL_ID = "gemini-2.5-pro-preview-05-06"
+ROOT_AGENT_MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
 
 
 async def before_model_callback(callback_context: CallbackContext,
@@ -64,7 +65,7 @@ async def after_model_callback(callback_context: CallbackContext,
 prepare_environment()
 
 root_agent = LlmAgent(
-    model=ROOT_AGENT_MODEL_ID,
+    model=get_gemini_model(ROOT_AGENT_MODEL_ID),
     name="data_agent",
     output_key="output",
     description="CRM Data Analytics Consultant",

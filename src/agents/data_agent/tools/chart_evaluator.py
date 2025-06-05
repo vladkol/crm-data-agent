@@ -49,7 +49,8 @@ def evaluate_chart(png_image: bytes,
                                             question=question)
 
     image_part = Part.from_bytes(mime_type="image/png", data=png_image)
-    eval_result = get_genai_client().models.generate_content(model=CHART_EVALUATOR_MODEL_ID,
+    eval_result = get_genai_client().models.generate_content(
+        model=CHART_EVALUATOR_MODEL_ID,
         contents=Content(
             role="user",
             parts=[
