@@ -88,7 +88,7 @@ Generate a complete Vega-Lite chart (as json text) that effectively visualizes t
 5.  **Strict Technical Constraints:**
     *   **Vega-Lite Version:** MUST use Vega-Lite {vega_lite_schema_version} schema.
     *   **Valid Syntax:** Ensure the generated JSON is syntactically correct and adheres strictly to the Vega-Lite specification. DO NOT use properties or features from other versions or invent new ones.
-    *   **Output Format:** Your entire output MUST be **only** the raw Vega-Lite JSON code. Do NOT include markdown formatting (like ```json ... ```), comments, explanations, or any other text outside the JSON structure.
+    *   **Output:** `vega_lite_json` is json code based on the Vega-Lite schema below.
 {notes_text}
 
 6.  **Vega-Lite Schema and Library:**

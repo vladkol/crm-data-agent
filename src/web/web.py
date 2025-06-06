@@ -789,10 +789,9 @@ def _get_user_id() -> str:
             user_id = ""
     if not user_id:
             user_id = DEFAULT_USER_ID
-    user_id_md5 = hashlib.md5(user_id.lower().encode()).hexdigest()
-    st.session_state["agent_user_id"] = user_id_md5
+    st.session_state["agent_user_id"] = user_id
     st.session_state["agent_user_name"] = user_id
-    return user_id_md5
+    return user_id
 
 
 async def _initialize_configuration():

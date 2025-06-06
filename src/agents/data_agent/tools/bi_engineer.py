@@ -123,6 +123,7 @@ def _create_chat(model: str, history: list, max_thinking: bool = False):
             thinking_config=(
                 ThinkingConfig(thinking_budget=32768) if max_thinking
                 else None),
+            max_output_tokens=65536
         ),
         history=history
     )
@@ -131,36 +132,53 @@ def _create_chat(model: str, history: list, max_thinking: bool = False):
 
 def _fix_df_dates(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Inspects a DataFrame and converts any 'object' dtype columns
-    that contain date or datetime objects to datetime64[ns].
+    Converts all columns of type date, datetime, or datetimetz in a
+    Pandas DataFrame to ISO 8601 string format.
 
     Args:
-        df (pd.DataFrame): The DataFrame to fix.
+        df (pd.DataFrame): The input DataFrame.
 
     Returns:
-        pd.DataFrame: A new DataFrame with corrected date types.
+        pd.DataFrame: A DataFrame with date/datetime columns converted to
+                      ISO formatted strings.
     """
-    df_fixed = df.copy()  # Work on a copy to avoid side effects
-    for col in df_fixed.columns:
-        # Check only for 'object' type columns to be efficient
-        if df_fixed[col].dtype == 'object':
-            try:
-                # Attempt to get the first non-null value
-                first_non_null = df_fixed[col].dropna().iloc[0]
+    df = df.copy()  # Work on a copy to avoid side effects
+    # --- Process native pandas datetime types ---
+    datetime_cols = df.select_dtypes(include=['datetime', 'datetimetz']).columns
+    for col in datetime_cols:
+        # 1. Convert each value to an ISO string
+        iso_values = df[col].apply(lambda x: x.isoformat() if pd.notnull(x) else None)
+        # 2. Explicitly cast the column to the modern 'string' dtype
+        df[col] = iso_values.astype("string")
 
-                # Check if it's a date or datetime object
-                if isinstance(first_non_null, (date, datetime)):
-                    print(f"Converting column '{col}' to datetime64[ns]...")
-                    df_fixed[col] = pd.to_datetime(df_fixed[col])
-            except IndexError:
-                # This happens if the column is all NaNs
-                continue
-            except Exception:
-                # The column might be 'object' but not contain dates
-                continue
+    # --- Process object columns that might contain date/datetime objects ---
+    object_cols = df.select_dtypes(include=['object']).columns
+    for col in object_cols:
+        # Heuristic to find columns that contain date/datetime objects
+        first_valid_index = df[col].first_valid_index()
+        if first_valid_index is not None and isinstance(df[col].loc[first_valid_index], (date, datetime)):
+            # 1. Convert each value to an ISO string
+            iso_values = df[col].apply(
+                lambda x: x.isoformat()
+                if isinstance(x, (date, datetime))
+                else x
+            )
+            # 2. Explicitly cast the column to the modern 'string' dtype
+            df[col] = iso_values.astype("string")
+    return df
 
-    return df_fixed
 
+def _json_date_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
+
+def _safe_json(json_str: str) -> str:
+    json_str = "{" + json_str.strip().split("{", 1)[-1]
+    json_str = json_str.rsplit("}", 1)[0] + "}"
+    json_dict = json.loads(json_str)
+    return json.dumps(json_dict, default=_json_date_serial)
 
 async def bi_engineer_tool(original_business_question: str,
                      question_that_sql_result_can_answer: str,
@@ -232,7 +250,7 @@ async def bi_engineer_tool(original_business_question: str,
     for _ in range(5): # 5 tries to make a good chart
         for _ in range(10):
             try:
-                vega_dict = json.loads(chart_json) # type: ignore
+                vega_dict = json.loads(_safe_json(chart_json)) # type: ignore
                 vega_dict["data"] = {"values": []}
                 vega_dict.pop("datasets", None)
                 vega_chart = alt.Chart.from_dict(vega_dict)
@@ -248,6 +266,10 @@ async def bi_engineer_tool(original_business_question: str,
                 break
             except Exception as ex:
                 message = f"""
+                {chart_json}
+
+                {df.dtypes.to_string()}
+
 You made a mistake!
 Fix the issues. Redesign the chart if it promises a better result.
 

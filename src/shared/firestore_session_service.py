@@ -178,7 +178,7 @@ class FirestoreSessionService(BaseSessionService):
             k: v for k, v in session_dict.items()
             if not k.startswith("__STATE_::")
         }
-        session = Session.model_validate(session_dict)
+        session = Session.model_validate(session_dict, strict=False)
         session.events = []
         query = None
         events_collection = self._get_events_collection(
