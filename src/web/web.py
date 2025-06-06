@@ -604,20 +604,6 @@ def get_ticker_data(symbol: str):
         st.error(f"Could not fetch data for {symbol}: {e}", icon="⚠️")
         return None
 
-def create_sparkline_svg(data, color):
-    fig, ax = plt.subplots(figsize=(4, 1))
-    ax.plot(data.index, data.values, color=color, linewidth=2)
-    ax.set_yticklabels([]); ax.set_xticklabels([])
-    ax.tick_params(axis='both', which='both', length=0)
-    for spine in ax.spines.values(): spine.set_visible(False)
-    fig.patch.set_alpha(0.0); ax.patch.set_alpha(0.0)
-    svg_buffer = BytesIO()
-    fig.savefig(svg_buffer, format='svg', bbox_inches='tight', pad_inches=0, transparent=True)
-    plt.close(fig)
-    # << ENCODING STEP >> Encode the SVG to Base64
-    svg_base64 = base64.b64encode(svg_buffer.getvalue()).decode("utf-8")
-    return f"data:image/svg+xml;base64,{svg_base64}"
-
 ######################### Event rendering #########################
 @st.fragment
 def _process_function_calls(function_calls):
@@ -812,37 +798,6 @@ async def _initialize_configuration():
     st.session_state.app_name = agent_app_name
     st.session_state.adk_configured = True
 
-    # Cleaning up empty sessions
-    sessions_list = await _get_all_sessions()
-    deleted_sessions = []
-    for index, s in enumerate(sessions_list):
-        session = await session_service.get_session(
-            app_name=st.session_state.app_name,
-            user_id=_get_user_id(),
-            session_id=s.id)
-        if "RUNNING_QUERY" not in session.state: # type: ignore
-            day_before = (datetime.datetime.now() - datetime.timedelta(days=1))
-            if session.last_update_time > day_before.timestamp(): # type: ignore
-                continue
-            # Deleting empty session.
-            # Couldn't come with a better place
-            # without increasing complexity.
-            try:
-                await session_service.delete_session(
-                    app_name=st.session_state.app_name,
-                    user_id=_get_user_id(),
-                    session_id=s.id
-                )
-            except Exception as ex:
-                logging.warning("Couldn't delete a session." \
-                                f"It may be deleted already:\n{ex}")
-            deleted_sessions.append(index)
-        else:
-            # We have a session to select
-            break
-    while deleted_sessions:
-        sessions_list.pop(deleted_sessions[-1])
-        deleted_sessions.pop(-1)
 
 
 ######################### Session management #########################
@@ -870,6 +825,63 @@ async def _get_all_sessions() -> list[Session]:
     st.session_state.all_adk_sessions = sessions or []
     return sessions
 
+### Watchlist ###
+
+def create_sparkline_svg(data, color):
+    fig, ax = plt.subplots(figsize=(4, 1))
+    ax.plot(data.index, data.values, color=color, linewidth=2)
+    ax.set_yticklabels([]); ax.set_xticklabels([])
+    ax.tick_params(axis='both', which='both', length=0)
+    for spine in ax.spines.values(): spine.set_visible(False)
+    fig.patch.set_alpha(0.0); ax.patch.set_alpha(0.0)
+    svg_buffer = BytesIO()
+    fig.savefig(svg_buffer, format='svg', bbox_inches='tight', pad_inches=0, transparent=True)
+    plt.close(fig)
+    # << ENCODING STEP >> Encode the SVG to Base64
+    svg_base64 = base64.b64encode(svg_buffer.getvalue()).decode("utf-8")
+    return f"data:image/svg+xml;base64,{svg_base64}"
+
+def load_watchlist():
+    with open(os.path.join(os.path.dirname(__file__), "images/logo.svg")) as f:
+        svg = base64.b64encode(f.read().encode("utf-8")).decode("utf-8")
+        st.markdown(f"""
+        <a href="/" target="_blank" style="align-items: center; color: var(--md-sys-color-primary); text-decoration: none">
+        <h2><img style="transform: translateY(-4px);" width="64px" src='data:image/svg+xml;base64,{svg}' /> Enterprise Data Agent</h2>
+        <hr/>
+        </a>
+        """.strip(), unsafe_allow_html=True)
+    st.markdown("### Watchlist")
+    for symbol in DEFAULT_TICKERS:
+        data = get_ticker_data(symbol)
+
+        if data:
+            is_positive = data['change'] >= 0
+            color = "#26A69A" if is_positive else "#EF5350"
+            arrow_class = "arrow-up" if is_positive else "arrow-down"
+            change_class = "positive" if is_positive else "negative"
+            arrow_char = "▲" if is_positive else "▼"
+            sparkline_uri = create_sparkline_svg(data['history'], color=color)
+
+            # Create the HTML structure for one ticker row
+            html = f"""
+            <div class="ticker-row">
+                <div class="ticker-info">
+                    <p class="ticker-symbol">{data['symbol_display']}</p>
+                    <p class="company-name">{data['name']}</p>
+                </div>
+                <div class="sparkline">
+                    <img src="{sparkline_uri}" alt="Sparkline chart">
+                </div>
+                <div class="price-info">
+                    <p class="price">{data['price']:.2f}</p>
+                    <p class="change {change_class}">
+                        {data['percent_change']:+.2f}%
+                        <span class="arrow {arrow_class}">{arrow_char}</span>
+                    </p>
+                </div>
+            </div>
+            """
+            st.html(html)
 
 ######################### Agent Request Handler #########################
 
@@ -949,9 +961,7 @@ async def app():
     if "adk_configured" not in st.session_state:
         with st.spinner("Initializing...", show_time=False):
             await _initialize_configuration()
-            sessions_list = await _get_all_sessions()
-    else:
-        sessions_list = await _get_all_sessions()
+    sessions_list = await _get_all_sessions()
     session_ids = [s.id for s in sessions_list]
     session_service = st.session_state.session_service
     current_session = None
@@ -992,78 +1002,21 @@ async def app():
         st.query_params["session"] = current_session.id
 
     with st.sidebar:
-        with open(os.path.join(os.path.dirname(__file__), "images/logo.svg")) as f:
-            svg = base64.b64encode(f.read().encode("utf-8")).decode("utf-8")
-            st.markdown(f"""
-            <a href="/" target="_blank" style="align-items: center; color: var(--md-sys-color-primary); text-decoration: none">
-            <h2><img style="transform: translateY(-4px);" width="64px" src='data:image/svg+xml;base64,{svg}' /> Enterprise Data Agent</h2>
-            <hr/>
-            </a>
-            """.strip(), unsafe_allow_html=True)
-        st.markdown("### Watchlist")
-        for symbol in DEFAULT_TICKERS:
-            data = get_ticker_data(symbol)
-
-            if data:
-                is_positive = data['change'] >= 0
-                color = "#26A69A" if is_positive else "#EF5350"
-                arrow_class = "arrow-up" if is_positive else "arrow-down"
-                change_class = "positive" if is_positive else "negative"
-                arrow_char = "▲" if is_positive else "▼"
-                sparkline_uri = create_sparkline_svg(data['history'], color=color)
-
-                # Create the HTML structure for one ticker row
-                html = f"""
-                <div class="ticker-row">
-                    <div class="ticker-info">
-                        <p class="ticker-symbol">{data['symbol_display']}</p>
-                        <p class="company-name">{data['name']}</p>
-                    </div>
-                    <div class="sparkline">
-                        <img src="{sparkline_uri}" alt="Sparkline chart">
-                    </div>
-                    <div class="price-info">
-                        <p class="price">{data['price']:.2f}</p>
-                        <p class="change {change_class}">
-                            {data['percent_change']:+.2f}%
-                            <span class="arrow {arrow_class}">{arrow_char}</span>
-                        </p>
-                    </div>
-                </div>
-                """
-                st.html(html)
-
-
-        with st.popover("Sessions"): # st.markdown("### Sessions")
+        load_watchlist()
+        with st.popover("Sessions"):
             if st.button("New Session"):
-                # with st.spinner("Creating a new session...", show_time=False):
-                #     st.session_state.pop("adk_session", None)
-                #     current_session = await _create_session()
-                #     st.session_state.adk_session = current_session
-                #     st.query_params["session"] = current_session.id
-                # st.rerun()
                 st.query_params["session"] = "none"
                 st.rerun()
 
             sessions_list = st.session_state.all_adk_sessions
             session_ids = [s.id for s in sessions_list]
-            sessions = {s.id : s for s in sessions_list}
             selected_option = st.selectbox("Select a session:",
                                         session_ids,
                                         index=current_index)
             if selected_option and selected_option != current_session.id: # type: ignore
-                # selected_session = sessions[selected_option]
                 with st.spinner("Loading...", show_time=False):
                     st.query_params["session"] = selected_option
                     st.rerun()
-                #     selected_session = await session_service.get_session(
-                #         app_name=selected_session.app_name,
-                #         user_id=selected_session.user_id,
-                #         session_id=selected_session.id
-                #     )
-                # st.session_state.adk_session = selected_session
-                # st.query_params["session"] = selected_session.id
-                # st.rerun()
     with top:
         await _render_chat(st.session_state.adk_session.events) # type: ignore
     with st.spinner("Thinking...", show_time=False):
