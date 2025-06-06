@@ -21,11 +21,12 @@ from google.genai.types import (
                                 Content,
                                 GenerateContentConfig,
                                 SafetySetting,
+                                ThinkingConfig
                                 )
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse, LlmRequest
-from google.adk.planners import PlanReActPlanner
+from google.adk.planners import BuiltInPlanner
 from google.adk.tools.agent_tool import AgentTool
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -78,7 +79,9 @@ root_agent = LlmAgent(
         data_engineer,
         bi_engineer_tool,
     ],
-    planner=PlanReActPlanner(),
+    planner=BuiltInPlanner(
+        thinking_config=ThinkingConfig(thinking_budget=32768)
+    ),
     generate_content_config=GenerateContentConfig(
         temperature = 0.0001,
         top_p = 0.0,
@@ -88,6 +91,6 @@ root_agent = LlmAgent(
                 category="HARM_CATEGORY_DANGEROUS_CONTENT", # type: ignore
                 threshold="BLOCK_ONLY_HIGH", # type: ignore
             ),
-        ]
+        ],
     )
 )

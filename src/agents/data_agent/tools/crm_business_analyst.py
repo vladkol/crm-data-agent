@@ -18,8 +18,14 @@ import uuid
 from google.adk.agents import LlmAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.models import LlmResponse
+from google.adk.planners import BuiltInPlanner
 
-from google.genai.types import GenerateContentConfig, Part, SafetySetting
+from google.genai.types import (
+    GenerateContentConfig,
+    Part,
+    SafetySetting,
+    ThinkingConfig
+)
 
 from prompts.crm_business_analyst import (system_instruction
                                           as crm_business_analyst_instruction)
@@ -73,6 +79,9 @@ crm_business_analyst_agent = LlmAgent(
                 threshold="BLOCK_ONLY_HIGH", # type: ignore
             ),
         ]
+    ),
+    planner=BuiltInPlanner(
+        thinking_config=ThinkingConfig(thinking_budget=32768)
     ),
     after_model_callback=after_model_callback
 )

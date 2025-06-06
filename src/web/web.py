@@ -15,7 +15,7 @@
 
 import asyncio
 import base64
-import hashlib
+import datetime
 from io import BytesIO
 import json
 import logging
@@ -759,8 +759,8 @@ async def _render_chat(events):
 ######################### Configuration management #########################
 
 def _get_user_id() -> str:
-    """Retrieves user id (email) from the environment,
-    and generate an MD5 hash of it for using with the session service
+    """Retrieves user id (email) from the environment
+    for using with the session service
 
     Returns:
         str: user id for the session service
@@ -821,6 +821,9 @@ async def _initialize_configuration():
             user_id=_get_user_id(),
             session_id=s.id)
         if "RUNNING_QUERY" not in session.state: # type: ignore
+            day_before = (datetime.datetime.now() - datetime.timedelta(days=1))
+            if session.last_update_time > day_before.timestamp(): # type: ignore
+                continue
             # Deleting empty session.
             # Couldn't come with a better place
             # without increasing complexity.

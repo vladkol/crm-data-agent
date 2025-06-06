@@ -144,7 +144,9 @@ def _fix_df_dates(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()  # Work on a copy to avoid side effects
     # --- Process native pandas datetime types ---
-    datetime_cols = df.select_dtypes(include=['datetime', 'datetimetz']).columns
+    datetime_cols = df.select_dtypes(
+        include=["datetime", "datetimetz", "dbdate"]
+    ).columns
     for col in datetime_cols:
         # 1. Convert each value to an ISO string
         iso_values = df[col].apply(lambda x: x.isoformat() if pd.notnull(x) else None)
