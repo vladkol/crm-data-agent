@@ -601,7 +601,7 @@ def get_ticker_data(symbol: str):
             "percent_change": percent_change
         }
     except Exception as e:
-        st.error(f"Could not fetch data for {symbol}: {e}", icon="⚠️")
+        st.error(f"Could not fetch data for {symbol}", icon="⚠️")
         return None
 
 ######################### Event rendering #########################
@@ -1079,6 +1079,7 @@ async def app():
         with st.popover("Sessions"):
             if st.button("New Session"):
                 st.query_params["session"] = "none"
+                st.session_state.pop("adk_session", None)
                 st.rerun()
 
             sessions_list = st.session_state.all_adk_sessions

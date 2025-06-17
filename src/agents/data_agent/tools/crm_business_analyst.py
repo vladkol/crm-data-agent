@@ -32,7 +32,7 @@ from prompts.crm_business_analyst import (system_instruction
 from tools.utils import get_gemini_model
 
 
-BUSINESS_ANALYST_AGENT_MODEL_ID = "gemini-2.5-pro-preview-06-05" # "gemini-2.5-pro-preview-05-06"
+BUSINESS_ANALYST_AGENT_MODEL_ID = "gemini-2.5-pro" # "gemini-2.5-pro-preview-05-06"
 
 
 async def after_model_callback(callback_context: CallbackContext,
