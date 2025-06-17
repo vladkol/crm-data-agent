@@ -605,6 +605,16 @@ def get_ticker_data(symbol: str):
         return None
 
 ######################### Event rendering #########################
+# Add a callback function to handle feedback
+def handle_feedback(feedback_key: str, feedback_type: str):
+    """
+    This function is called when a feedback button is clicked.
+    """
+    if feedback_type == "good":
+        st.toast("Thanks for your feedback! 😺")      
+    else: 
+        st.toast("We'll use your feedback to improve. 😿")
+
 @st.fragment
 def _process_function_calls(function_calls):
   title = f"⚡ {', '.join([fc.name for fc in function_calls])}"
@@ -666,6 +676,61 @@ async def _process_event(event: Event) -> bool:
                         else ":material/robot_2:")
             ):
                 st.markdown(msg, unsafe_allow_html=True)
+                # Add feedback buttons for AI responses
+                if msg_role in ["ai", "assistant"]:
+                    feedback_key = f"feedback_{event.id}"
+
+                    feedback_status = None
+                    feedback_states = session.state
+                    if feedback_key in feedback_states:
+                        feedback_status = feedback_states[feedback_key]
+                        
+                    # st.write(f"{feedback_states}")
+                    # st.write(f"_DEBUG: current feedback state for `{feedback_key}`_ is `{feedback_status}`_")
+                    
+                    
+                    # Adjust column width for better spacing
+                    col1, col2, _ = st.columns([0.15, 0.15, 0.7])
+
+                    # If 'good' feedback was given, show a highlighted, disabled button
+                    if feedback_status == "good":
+                        with col1:
+                            st.button("😺 Liked", key=f"clicked_good_{feedback_key}", disabled=True)
+                    # If 'bad' feedback was given, show a highlighted, disabled button
+                    elif feedback_status == "bad":
+                        with col2:
+                            st.button("😿 Disliked", key=f"clicked_bad_{feedback_key}", disabled=True)
+                    # Otherwise, show the active feedback buttons
+                    else:
+                        with col1:
+                            st.button(
+                                "😺 Good",
+                                key=f"good_{feedback_key}",
+                                on_click=handle_feedback,
+                                args=(feedback_key, "good")
+                            )
+                        with col2:
+                            st.button(
+                                "😿 Bad",
+                                key=f"bad_{feedback_key}",
+                                on_click=handle_feedback,
+                                args=(feedback_key, "bad")
+                            )
+
+                    # st.write(f"DEBUGGING: {feedback_status}")
+                    await st.session_state.session_service.append_event(
+                        session=st.session_state.adk_session,
+                        event=Event(
+                            author="InternalUpdater",
+                            actions= EventActions(
+                                state_delta={
+                                    f"{feedback_key}": feedback_status
+                                }
+                            )
+                        )
+                    )
+
+
 
     if event.actions.artifact_delta:
         for filename, version in event.actions.artifact_delta.items():
@@ -797,6 +862,7 @@ async def _initialize_configuration():
     st.session_state.session_service = session_service
     st.session_state.app_name = agent_app_name
     st.session_state.adk_configured = True
+    st.session_state.last_prompt = ""
 
 
 
@@ -888,6 +954,7 @@ def load_watchlist():
 async def ask_agent(question: str):
     start = time()
     session = st.session_state.adk_session
+    st.session_state.last_prompt = question
     content = Content(parts=[
         Part.from_text(text=question)
     ],role="user")
