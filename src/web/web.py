@@ -56,7 +56,7 @@ DEFAULT_TICKERS = [
 
 logging.getLogger().setLevel(logging.INFO)
 
-user_agent = st.context.headers["User-Agent"]
+user_agent = st.context.headers.get("User-Agent", "")
 if " Mobile" in user_agent:
     initial_sidebar_state = "collapsed"
 else:
@@ -606,14 +606,32 @@ def get_ticker_data(symbol: str):
 
 ######################### Event rendering #########################
 # Add a callback function to handle feedback
-def handle_feedback(feedback_key: str, feedback_type: str):
+async def handle_feedback(feedback_key: str, feedback_type: str):
     """
     This function is called when a feedback button is clicked.
     """
-    if feedback_type == "good":
-        st.toast("Thanks for your feedback! 😺")      
-    else: 
-        st.toast("We'll use your feedback to improve. 😿")
+    with st.spinner(text="Sending..."):
+        if feedback_type == "like":
+            st.toast(
+                "Thanks for your feedback!",
+                icon=":material/thumb_up:"
+            )
+        else:
+            st.toast(
+                "We'll use your feedback to improve.",
+                icon=":material/thumb_up:"
+            )
+        await st.session_state.session_service.append_event(
+            session=st.session_state.adk_session,
+            event=Event(
+                author="InternalUpdater",
+                actions= EventActions(
+                    state_delta={
+                        f"{feedback_key}": feedback_type
+                    }
+                )
+            )
+        )
 
 @st.fragment
 def _process_function_calls(function_calls):
@@ -684,51 +702,39 @@ async def _process_event(event: Event) -> bool:
                     feedback_states = session.state
                     if feedback_key in feedback_states:
                         feedback_status = feedback_states[feedback_key]
-                        
-                    # st.write(f"{feedback_states}")
-                    # st.write(f"_DEBUG: current feedback state for `{feedback_key}`_ is `{feedback_status}`_")
-                    
-                    
+
                     # Adjust column width for better spacing
-                    col1, col2, _ = st.columns([0.15, 0.15, 0.7])
+                    col1, col2, _ = st.columns([0.05, 0.05, 0.9])
+                    like_button_type = "secondary"
+                    dislike_button_type = "secondary"
 
-                    # If 'good' feedback was given, show a highlighted, disabled button
-                    if feedback_status == "good":
-                        with col1:
-                            st.button("😺 Liked", key=f"clicked_good_{feedback_key}", disabled=True)
-                    # If 'bad' feedback was given, show a highlighted, disabled button
-                    elif feedback_status == "bad":
-                        with col2:
-                            st.button("😿 Disliked", key=f"clicked_bad_{feedback_key}", disabled=True)
-                    # Otherwise, show the active feedback buttons
-                    else:
-                        with col1:
-                            st.button(
-                                "😺 Good",
-                                key=f"good_{feedback_key}",
-                                on_click=handle_feedback,
-                                args=(feedback_key, "good")
-                            )
-                        with col2:
-                            st.button(
-                                "😿 Bad",
-                                key=f"bad_{feedback_key}",
-                                on_click=handle_feedback,
-                                args=(feedback_key, "bad")
-                            )
+                    with col1:
+                        if feedback_status == "like":
+                            like_button_type = "primary"
+                        if st.button(
+                            "",
+                            icon=":material/thumb_up:",
+                            type=like_button_type,
+                            key=f"like_{feedback_key}"
+                        ):
+                            feedback_status = "like"
+                            await handle_feedback(feedback_key, "like")
+                            st.rerun()
 
-                    # st.write(f"DEBUGGING: {feedback_status}")
-                    await st.session_state.session_service.append_event(
-                        session=st.session_state.adk_session,
-                        event=Event(
-                            author="InternalUpdater",
-                            actions= EventActions(
-                                state_delta={
-                                    f"{feedback_key}": feedback_status
-                                }
-                            )
-                        )
-                    )
+                    with col2:
+                        if feedback_status == "dislike":
+                            dislike_button_type = "primary"
+                        if st.button(
+                            "",
+                            icon=":material/thumb_down:",
+                            type=dislike_button_type,
+                            key=f"dislike_{feedback_key}"
+                        ):
+                            feedback_status = "dislike"
+                            await handle_feedback(feedback_key, "dislike")
+                            st.rerun()
+
+
 
 
 
