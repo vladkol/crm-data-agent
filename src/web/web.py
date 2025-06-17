@@ -613,13 +613,13 @@ async def handle_feedback(feedback_key: str, feedback_type: str):
     with st.spinner(text="Sending..."):
         if feedback_type == "like":
             st.toast(
-                "Thanks for your feedback!",
+                "Great! Thanks for your feedback!",
                 icon=":material/thumb_up:"
             )
         else:
             st.toast(
-                "We'll use your feedback to improve.",
-                icon=":material/thumb_up:"
+                "Thank you for the feedback!",
+                icon=":material/thumb_down:"
             )
         await st.session_state.session_service.append_event(
             session=st.session_state.adk_session,
