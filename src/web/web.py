@@ -15,7 +15,6 @@
 
 import asyncio
 import base64
-import datetime
 from io import BytesIO
 import json
 import logging
@@ -561,48 +560,66 @@ header {
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 ######################### Tickers data #########################
+
 # --- DATA FETCHING & HELPERS ---
-@st.cache_data(ttl=300, show_spinner=False)  # Cache data for 5 minutes
-def get_ticker_data(symbol: str):
-    """Fetches historical and current data for a given ticker symbol."""
+@st.cache_resource(ttl="5min", show_spinner=False)  # Cache data for 5 minutes
+def get_ticker_data(symbols: list[str]) -> list[dict]:
+    """Fetches historical and current data for given ticker symbols."""
+    results = []
     try:
-        with st.spinner(f"Getting {symbol} data..."):
-            ticker = yf.Ticker(symbol)
+        with st.spinner(f"Getting tickers data..."):
+            results = []
+            tickers = yf.Tickers(symbols)
 
             # Get historical data for the sparkline (last 7 days, 1-hour interval)
-            hist = ticker.history(period="7d", interval="1h")
-        if hist.empty:
-            return None
+            _ = tickers.history(
+                period="7d",
+                interval="1h",
+            )
+            _ = tickers.history(
+                period="2d",
+            )
+
+        for s in symbols:
+            ticker = tickers.tickers[s]
+            hist = ticker.history(
+                period="7d",
+                interval="1h",
+            )
+            if hist.empty:
+                continue
+            daily_hist = ticker.history(
+                period="2d",
+            )
 
         # Get data for price and change (last 2 days)
-        daily_hist = ticker.history(period="2d")
-        if len(daily_hist) < 2:
-            # Fallback if not enough data for change calculation
-            price = hist['Close'].iloc[-1]
-            change = 0
-            percent_change = 0
-        else:
-            price = daily_hist['Close'].iloc[-1]
-            prev_close = daily_hist['Close'].iloc[-2]
-            change = price - prev_close
-            percent_change = (change / prev_close) * 100
+            if len(daily_hist) < 2:
+                # Fallback if not enough data for change calculation
+                price = hist["Close"].iloc[-1]
+                change = 0
+                percent_change = 0
+            else:
+                price = daily_hist["Close"].iloc[-1]
+                prev_close = daily_hist["Close"].iloc[-2]
+                change = price - prev_close
+                percent_change = (change / prev_close) * 100
 
-        # Use the provided friendly name or fallback to the ticker info
-        info = ticker.info
-        company_name = info.get('longName', symbol.upper())
-        symbol_display = info.get('symbol', symbol).replace('^', '')
+            # Use the provided friendly name or fallback to the ticker info
+            info = ticker.info
+            company_name = info.get('longName', s.upper())
+            symbol_display = info.get('symbol', s).replace('^', '')
 
-        return {
-            "symbol_display": symbol_display,
-            "name": company_name,
-            "history": hist['Close'],
-            "price": price,
-            "change": change,
-            "percent_change": percent_change
-        }
+            results.append({
+                "symbol_display": symbol_display,
+                "name": company_name,
+                "history": hist['Close'],
+                "price": price,
+                "change": change,
+                "percent_change": percent_change
+            })
     except Exception as e:
-        st.error(f"Could not fetch data for {symbol}", icon="⚠️")
-        return None
+        st.error(f"Error when fetching stock data", icon="⚠️")
+    return results
 
 ######################### Event rendering #########################
 # Add a callback function to handle feedback
@@ -923,9 +940,7 @@ def load_watchlist():
         </a>
         """.strip(), unsafe_allow_html=True)
     st.markdown("### Watchlist")
-    for symbol in DEFAULT_TICKERS:
-        data = get_ticker_data(symbol)
-
+    for data in get_ticker_data(DEFAULT_TICKERS):
         if data:
             is_positive = data['change'] >= 0
             color = "#26A69A" if is_positive else "#EF5350"
